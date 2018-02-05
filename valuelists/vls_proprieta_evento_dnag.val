@@ -1,0 +1,8 @@
+addEmptyValue:1,
+customValues:"Diurno|D\r\
+Notturno|N\r\
+Accantonata|A\r\
+Goduta|G ",
+name:"vls_proprieta_evento_dnag",
+typeid:34,
+uuid:"A256453E-D74F-47E6-9FB6-EA865AD577C3"

@@ -1,0 +1,9 @@
+allowParentDeleteWhenHavingRelatedRecords:false,
+foreignDataSource:"db:/ma_presenze/e2eventi",
+items:[
+{foreignColumnName:"idevento",primaryDataProviderID:"idevento",typeid:23,uuid:"81CA20CA-E66E-47EB-B43C-713DF858D978"}
+],
+name:"e2giornalieraeventi_to_e2eventi",
+primaryDataSource:"db:/ma_presenze/e2giornalieraeventi",
+typeid:22,
+uuid:"CF467D3E-20F3-4381-8D71-B2BBC084F33C"

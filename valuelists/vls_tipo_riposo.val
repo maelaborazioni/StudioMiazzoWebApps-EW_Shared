@@ -1,0 +1,9 @@
+addEmptyValue:1,
+customValues:"Nessuno|0\r
+Primario|1 \r
+Secondario|2",
+name:"vls_tipo_riposo",
+returnDataProviders:1,
+showDataProviders:1,
+typeid:34,
+uuid:"5BA82E29-A49B-470C-B91A-5127B4901939"

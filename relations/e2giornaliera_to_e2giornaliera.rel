@@ -1,0 +1,8 @@
+allowCreationRelatedRecords:false,
+allowParentDeleteWhenHavingRelatedRecords:false,
+foreignDataSource:"db:/ma_presenze/e2giornaliera",
+joinType:1,
+name:"e2giornaliera_to_e2giornaliera",
+primaryDataSource:"db:/ma_presenze/e2giornaliera",
+typeid:22,
+uuid:"74E926E7-9188-4F61-8363-CC675A58F8CD"

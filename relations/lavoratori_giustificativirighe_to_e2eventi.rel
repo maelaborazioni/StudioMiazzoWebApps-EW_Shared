@@ -1,0 +1,11 @@
+allowCreationRelatedRecords:false,
+allowParentDeleteWhenHavingRelatedRecords:true,
+foreignDataSource:"db:/ma_presenze/e2eventi",
+items:[
+{foreignColumnName:"idevento",operator:0,primaryDataProviderID:"idevento",typeid:23,uuid:"ABC52834-E770-49C5-A8B8-A92F75B5BC1F"}
+],
+joinType:1,
+name:"lavoratori_giustificativirighe_to_e2eventi",
+primaryDataSource:"db:/ma_anagrafiche/lavoratori_giustificativirighe",
+typeid:22,
+uuid:"6C394BF9-C6F7-4A98-8375-5DCCD0F4D125"

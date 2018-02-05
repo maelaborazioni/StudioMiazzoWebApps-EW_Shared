@@ -1,0 +1,12 @@
+allowCreationRelatedRecords:true,
+allowParentDeleteWhenHavingRelatedRecords:false,
+deleteRelatedRecords:true,
+foreignDataSource:"db:/ma_anagrafiche/lavoratori_giustificativirighe",
+items:[
+{foreignColumnName:"idlavoratore",operator:0,primaryDataProviderID:"idlavoratore",typeid:23,uuid:"7FB340EE-6C29-4E9C-AC52-BAB00025056F"}
+],
+joinType:1,
+name:"lavoratori_to_lavoratori_giustificativirighe",
+primaryDataSource:"db:/ma_anagrafiche/lavoratori",
+typeid:22,
+uuid:"67F0B5DD-41FE-4A30-883C-D8CECA291596"

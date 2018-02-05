@@ -1,0 +1,9 @@
+addEmptyValue:1,
+customValues:"Non definito|2
+Sì|1
+No|0",
+name:"vls_triplestate",
+returnDataProviders:1,
+showDataProviders:1,
+typeid:34,
+uuid:"2EEB242D-0231-47A7-881C-5BBE81B5B1D8"

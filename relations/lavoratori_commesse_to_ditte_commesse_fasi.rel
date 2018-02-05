@@ -1,0 +1,9 @@
+foreignDataSource:"db:/ma_anagrafiche/ditte_commesse_fasi",
+items:[
+{foreignColumnName:"iddittacommessafase",primaryDataProviderID:"iddittacommessafase",typeid:23,uuid:"B8FE27F1-EF1F-4590-AADB-A6082A287217"}
+],
+joinType:1,
+name:"lavoratori_commesse_to_ditte_commesse_fasi",
+primaryDataSource:"db:/ma_anagrafiche/lavoratori_commesse",
+typeid:22,
+uuid:"3549CF95-2D37-42FC-AB12-16B19DBCD8DD"

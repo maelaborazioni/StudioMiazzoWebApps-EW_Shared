@@ -1,0 +1,10 @@
+allowParentDeleteWhenHavingRelatedRecords:false,
+foreignDataSource:"db:/ma_presenze/e2fo_compensazioni",
+items:[
+{foreignColumnName:"idcompensazione",primaryDataProviderID:"idcompensazione",typeid:23,uuid:"341D35B6-AB87-4EFA-B14D-AEFBA5FDE4FF"}
+],
+joinType:1,
+name:"e2fo_fasceorarie_to_e2fo_compensazioni",
+primaryDataSource:"db:/ma_presenze/e2fo_fasceorarie",
+typeid:22,
+uuid:"99A4F8E8-00E7-43F1-876A-21DEFCAD59D9"

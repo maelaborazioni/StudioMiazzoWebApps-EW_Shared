@@ -1,0 +1,13 @@
+allowCreationRelatedRecords:true,
+allowParentDeleteWhenHavingRelatedRecords:false,
+deleteRelatedRecords:true,
+foreignDataSource:"db:/ma_presenze/commesse_giornaliera",
+items:[
+{foreignColumnName:"iddittacommessafase",primaryDataProviderID:"iddittacommessafase",typeid:23,uuid:"1CE109D0-C886-4DE5-9A9D-B3E243BA3A76"},
+{foreignColumnName:"idlavoratore",primaryDataProviderID:"idlavoratore",typeid:23,uuid:"20DFABD7-004C-40ED-AEC5-676EEC9DBBF5"}
+],
+joinType:1,
+name:"lavoratori_commesse_to_commesse_giornaliera",
+primaryDataSource:"db:/ma_anagrafiche/lavoratori_commesse",
+typeid:22,
+uuid:"9A924E3F-6E18-4DF6-9B9E-74CF9D1605F8"

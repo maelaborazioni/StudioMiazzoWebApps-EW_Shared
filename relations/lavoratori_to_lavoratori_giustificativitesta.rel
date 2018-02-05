@@ -1,0 +1,11 @@
+allowCreationRelatedRecords:true,
+allowParentDeleteWhenHavingRelatedRecords:false,
+deleteRelatedRecords:true,
+foreignDataSource:"db:/ma_anagrafiche/lavoratori_giustificativitesta",
+items:[
+{foreignColumnName:"idlavoratore",primaryDataProviderID:"idlavoratore",typeid:23,uuid:"F05A2920-8AD9-4845-91D0-E93B4D3A08BC"}
+],
+name:"lavoratori_to_lavoratori_giustificativitesta",
+primaryDataSource:"db:/ma_anagrafiche/lavoratori",
+typeid:22,
+uuid:"2B46D58A-8739-4D45-942D-FF301CEB66B9"

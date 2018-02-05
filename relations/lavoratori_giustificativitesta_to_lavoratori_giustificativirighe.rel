@@ -1,0 +1,12 @@
+allowCreationRelatedRecords:true,
+allowParentDeleteWhenHavingRelatedRecords:true,
+deleteRelatedRecords:true,
+foreignDataSource:"db:/ma_anagrafiche/lavoratori_giustificativirighe",
+items:[
+{foreignColumnName:"idlavoratoregiustificativotesta",operator:0,primaryDataProviderID:"idlavoratoregiustificativotesta",typeid:23,uuid:"5590ABD7-B98D-4702-848C-DAAC72D9CC64"}
+],
+joinType:1,
+name:"lavoratori_giustificativitesta_to_lavoratori_giustificativirighe",
+primaryDataSource:"db:/ma_anagrafiche/lavoratori_giustificativitesta",
+typeid:22,
+uuid:"961D24E5-68B5-4A55-B7F5-3EC8B83FFD75"

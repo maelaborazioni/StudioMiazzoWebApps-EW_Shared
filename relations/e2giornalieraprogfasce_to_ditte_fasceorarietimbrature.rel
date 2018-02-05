@@ -1,0 +1,10 @@
+allowCreationRelatedRecords:true,
+foreignDataSource:"db:/ma_anagrafiche/ditte_fasceorarietimbrature",
+items:[
+{foreignColumnName:"iddittafasciaorariatimbrature",primaryDataProviderID:"iddittafasciaorariatimbrature",typeid:23,uuid:"ADEDF646-DA36-4D05-8EC4-A33732E6CB9D"}
+],
+joinType:1,
+name:"e2giornalieraprogfasce_to_ditte_fasceorarietimbrature",
+primaryDataSource:"db:/ma_presenze/e2giornalieraprogfasce",
+typeid:22,
+uuid:"EBBFEDCB-32AC-43FE-AC93-7DBB6FC89800"

@@ -1,0 +1,12 @@
+allowCreationRelatedRecords:false,
+allowParentDeleteWhenHavingRelatedRecords:true,
+deleteRelatedRecords:true,
+foreignDataSource:"db:/ma_presenze/e2giornalieraeventi",
+items:[
+{foreignColumnName:"idgiornaliera",operator:0,primaryDataProviderID:"idgiornaliera",typeid:23,uuid:"D122FCCA-9B58-4C68-B359-19EA8A74772C"}
+],
+joinType:0,
+name:"e2giornaliera_to_e2giornalieraeventi",
+primaryDataSource:"db:/ma_presenze/e2giornaliera",
+typeid:22,
+uuid:"D65D8843-C0AB-4BE2-86F0-D52E04586D0D"
