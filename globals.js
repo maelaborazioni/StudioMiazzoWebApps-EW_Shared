@@ -931,6 +931,63 @@ function getElencoDipendentiSenzaRegoleAssociate(params)
 }
 
 /**
+ * Ottiene l'array deì dipendenti senza regole associate per tutto il gruppo di ditte
+ * (senza ricorrere al web service, non tiene conto del filtro derivante dall'indicazione del gruppo lavoratori)
+ * Serve per verificare l'eventuale presenze di dipendenti senza regole in fase di acquisizione timbrature
+ * 
+ * @param {Object} params
+ * @return {Array}
+ * 
+ * @properties={typeid:24,uuid:"6A05D95B-0DC7-4192-9408-AD1B11FC4F47"}
+ */
+function getElencoDipendentiSenzaRegoleAssociateGruppoDitte(params)
+{
+   var arrElencoDip = [];
+   var aSqlSel = "SELECT D.Codice AS CodDitta, D.RagioneSociale, L.CodDipendente, ISNULL(P.Cognome, 'Dati mancanti') AS Cognome"
+   aSqlSel += ", ISNULL(P.Nome, 'C.F.: ' + L.CodiceFiscale) AS Nome, L.Assunzione, L.Cessazione, L.CodQualifica AS Qualifica"
+   aSqlSel += " , L.idLavoratore";
+   
+   var aSqlFrom = " FROM dbo.F_Gio_ControlloRegoleOrarie_ID(?,?,?) R"
+   aSqlFrom += " INNER JOIN V_Lavoratori L ON R.idLavoratore = L.idLavoratore"
+   aSqlFrom += " LEFT OUTER JOIN Persone P ON L.CodiceFiscale = P.CodiceFiscale"
+   aSqlFrom += " INNER JOIN Ditte D ON L.idDitta = D.idDitta"
+   //aSqlFrom += " WHERE D.idDitta = ?"
+   aSqlFrom += " ORDER BY P.Cognome, P.Nome, L.CodDipendente"
+   var aSql = aSqlSel + aSqlFrom;	   
+   var arrPars = [
+	                  -1,
+	                  params['idgruppoinstallazione'] ? params['idgruppoinstallazione'] : -1,
+	                  params['periodo']
+                  ];
+   var ds = databaseManager.getDataSetByQuery(globals.Server.MA_ANAGRAFICHE,
+	                                          aSql,
+											  arrPars,
+											  -1);
+   var numDip = ds.getMaxRowIndex(); 
+   if(numDip)
+   {
+	   for(var l = 1; l <= numDip; l++)
+	   {
+		   var jsonDip = {  
+			   codice_ditta : ds.getValue(l,1),
+			   ragione_sociale : ds.getValue(l,2),
+			   cod_lavoratore : ds.getValue(l,3),
+			   cognome : ds.getValue(l,4),
+			   nome : ds.getValue(l,5),
+			   assunzione : globals.dateFormat(ds.getValue(l,6),globals.EU_DATEFORMAT),
+			   cessazione : ds.getValue(l,7) != null ? globals.dateFormat(ds.getValue(l,6),globals.EU_DATEFORMAT) : ds.getValue(l,7),
+			   qualifica : ds.getValue(l,8),
+			   id_lavoratore : ds.getValue(l,9)
+		   }
+		   
+		   arrElencoDip.push(jsonDip);
+	   }	       
+   }
+   
+   return arrElencoDip;
+}
+
+/**
  * Controlla se vi sono dipendenti da attivare per il periodo selezionato
  * 
  * @return {Object}
