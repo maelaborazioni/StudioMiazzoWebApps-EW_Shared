@@ -1314,3 +1314,26 @@ function eliminazioneDipendente(idLavoratore)
     else
         globals.ma_utl_showInfoDialog('Dipendente non eliminato, verificare.','Eliminazione dipendente');
 }
+
+/**
+ * Verifica se la ditta utilizza o meno le timbrature causalizzate in modo da poter gestire 
+ * la visualizzazione dello specifico tab in vista mensile
+ * 
+ * @param {Number} idDitta
+ *
+ * @properties={typeid:24,uuid:"295908F7-C2E0-4151-A71E-2A05AA728F35"}
+ * @AllowToRunInFind
+ */
+function haTimbratureCausalizzate(idDitta)
+{
+	/** @type {JSFoundset <db:/ma_presenze/e2timbratureserviziogestione>} */
+	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.TIMBRATURE_SERVIZIOGESTIONE);
+	if(fs.find())
+	{
+		fs.idditta = idDitta;
+		if(fs.search())
+			return true;
+	}
+	
+	return false;
+}
