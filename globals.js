@@ -264,7 +264,7 @@ function getGruppoInstallazione()
  */
 function isMesePrecedente(idditta)
 {
-	/** @type {JSFoundset<db:/ma_anagrafiche/ditte>}*/
+	/** @type {JSFoundSet<db:/ma_anagrafiche/ditte>}*/
 	var fsDitta = databaseManager.getFoundSet(globals.Server.MA_ANAGRAFICHE,globals.Table.DITTE);
     if(fsDitta.find())
     {
@@ -358,7 +358,7 @@ function getGiorniSelezionatiFromDates(arrGiorni)
  */
 function needsCertificate(idEventoClasse)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2eventiclassi>} */
+	/** @type {JSFoundSet<db:/ma_presenze/e2eventiclassi>} */
 	var eventiClasseFs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE, 'e2eventiclassi');
 	if(eventiClasseFs.find())
 	{
@@ -588,7 +588,7 @@ function isPeriodoAttivato(idDitta,periodo)
  */
 function getCodiceEvento(idEvento)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2eventi>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2eventi>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.EVENTI);
     if(fs.find())
     {
@@ -610,7 +610,7 @@ function getCodiceEvento(idEvento)
  */
 function getClasseEvento(idEvento)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2eventi>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2eventi>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.EVENTI);
     if(fs.find())
     {
@@ -633,7 +633,7 @@ function getClasseEvento(idEvento)
  */
 function getDescrizioneProprietaEvento(idEventoClasse,proprieta)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2eventiclassiproprieta>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2eventiclassiproprieta>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.EVENTI_CLASSI_PROPRIETA);
     if(fs.find())
     {
@@ -1068,7 +1068,7 @@ function setPeriodoAttivo(periodo)
  */
 function getDescGruppoLavoratori(idDitta,codGruppo)
 {
-	/** @type {JSFoundset<db:/ma_anagrafiche/ditte_presenzegruppigestione>} */
+	/** @type {JSFoundSet<db:/ma_anagrafiche/ditte_presenzegruppigestione>} */
 	var fsGruppi = databaseManager.getFoundSet(globals.Server.MA_ANAGRAFICHE,globals.Table.DITTE_PRESENZE_GRUPPI);
 	
 	if(fsGruppi.find())
@@ -1108,7 +1108,7 @@ function getTipoGestoreReteImpresa()
  */
 function getCodiceProprieta(arrIdEventoClasseProprieta)
 {
-	/** @type{JSFoundset<db:/ma_presenze/e2eventiclassiproprieta>}*/
+	/** @type{JSFoundSet<db:/ma_presenze/e2eventiclassiproprieta>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.EVENTI_CLASSI_PROPRIETA);
 	if(fs.find())
 	{
@@ -1173,7 +1173,7 @@ function getSettimana()
  */
 function getIdTabAttivita(codAttivita)
 {
-   /** @type {JSFoundset<db:/ma_presenze/e2wk_tabattivita>} */ 
+   /** @type {JSFoundSet<db:/ma_presenze/e2wk_tabattivita>} */ 
    var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.TAB_ATTIVITA);	
    if(fs.find())
    {
@@ -1270,7 +1270,7 @@ function inizializzaParametriFiltroEvento(_idditta, _periodo, _tipoGiornaliera, 
  */
 function getTracciatoConversione(idDitta)
 {
-	/** @type {JSFoundset<db:/ma_anagrafiche/ditte_gestioneesterna>}*/
+	/** @type {JSFoundSet<db:/ma_anagrafiche/ditte_gestioneesterna>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_ANAGRAFICHE,'ditte_gestioneesterna');
 	if(fs.find())
 	{
@@ -1294,7 +1294,7 @@ function getTracciatoConversione(idDitta)
  */
 function getCodRegola(idRegola)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2regole>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2regole>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.REGOLE);
 	if(fs.find())
 	{
@@ -1318,7 +1318,7 @@ function getCodRegola(idRegola)
  */
 function getDescrizioneRegola(idRegola)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2regole>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2regole>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.REGOLE);
 	if(fs.find())
 	{
@@ -1342,7 +1342,7 @@ function getDescrizioneRegola(idRegola)
  */
 function getDescrizioneRegolaDaCodice(idDitta,codRegola)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2regole>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2regole>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.REGOLE);
 	if(fs.find())
 	{
@@ -1369,7 +1369,7 @@ function getDescrizioneRegolaDaCodice(idDitta,codRegola)
  */
 function getRegolaDaCodice(idDitta,codRegola)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2regole>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2regole>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.REGOLE);
 	if(fs.find())
 	{
@@ -1590,14 +1590,14 @@ function ottieniInformazioniFasciaGiorno(idLav,giorno)
  */
 function ottieniInformazioniCompensazioniFascia(idFascia)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2fo_fasceorarie>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2fo_fasceorarie>}*/
 	var fsFo = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.FASCE_ORARIE);
 	if(fsFo.find())
 	{
 		fsFo.idfasciaoraria = idFascia;
 		if(fsFo.search())
 		{
-			/** @type {JSFoundset<db:/ma_presenze/e2fo_compensazioni>}*/
+			/** @type {JSFoundSet<db:/ma_presenze/e2fo_compensazioni>}*/
 			var fsComp = fsFo.e2fo_fasceorarie_to_e2fo_compensazioni;
 			if(fsComp)
 			return {
@@ -1631,7 +1631,7 @@ function ottieniInformazioniCompensazioniFascia(idFascia)
  */
 function ottieniDatasetOrariFittizi(idFasciaOraria)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2fo_fasceorariefittizie>} */
+	/** @type {JSFoundSet<db:/ma_presenze/e2fo_fasceorariefittizie>} */
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,'e2fo_fasceorariefittizie');
 	if(fs.find())
 	{
@@ -1672,7 +1672,7 @@ function ottieniOreTeoricheGiorno(idLav,giorno)
  */
 function ottieniRichiesteSospeseGiorno(idLavoratore,giorno)
 {
-	/** @type {JSFoundset<db:/ma_anagrafiche/lavoratori_giustificativirighe>}*/
+	/** @type {JSFoundSet<db:/ma_anagrafiche/lavoratori_giustificativirighe>}*/
 	var fsRighe = databaseManager.getFoundSet(globals.Server.MA_ANAGRAFICHE,globals.Table.RP_RIGHE);
     
 	if(fsRighe.find())
@@ -1703,7 +1703,7 @@ function ottieniOreAssenzaConfermateGiorno(idLavoratore,giorno,tipoGiornaliera)
 {
 	var totOreEvSost = null;
 	
-	/** @type {JSFoundset<db:/ma_presenze/e2giornaliera>} */
+	/** @type {JSFoundSet<db:/ma_presenze/e2giornaliera>} */
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.GIORNALIERA);
 	if(fs.find())
 	{
@@ -1750,7 +1750,7 @@ function ottieniOreAssenzaCertificazioniGiorno(idLavoratore,giorno)
 {
 	var totOreEvSto = 0;
 	
-	/** @type {JSFoundset<db:/ma_presenze/e2giornaliera>} */
+	/** @type {JSFoundSet<db:/ma_presenze/e2giornaliera>} */
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.GIORNALIERA);
 	if(fs.find())
 	{
@@ -1796,7 +1796,7 @@ function ottieniOreAssenzaRichiesteGiorno(idLavoratore,giorno)
 {
 	var totOreAssRich = 0;
 	
-	/** @type {JSFoundset<db:/ma_anagrafiche/lavoratori_giustificativirighe>}*/
+	/** @type {JSFoundSet<db:/ma_anagrafiche/lavoratori_giustificativirighe>}*/
 	var fsRighe = databaseManager.getFoundSet(globals.Server.MA_ANAGRAFICHE,globals.Table.RP_RIGHE);
     
 	if(fsRighe.find())
@@ -1830,7 +1830,7 @@ function ottieniOreAssenzaRichiesteGiorno(idLavoratore,giorno)
  */
 function isGiornoConteggiato(idlavoratore,giorno)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2giornaliera>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2giornaliera>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.GIORNALIERA);
 	
 	if(fs.find())
@@ -2070,7 +2070,7 @@ function getTotaleOreSostitutiveInBudget(idLav,dal,al,arrFasceOrarie)
 function utilizzaSmaltimentoRatei(idDitta)
 {
 	var usaSmaltimento = false;
-	/** @type {JSFoundset<db:/ma_anagrafiche/ditte>}*/
+	/** @type {JSFoundSet<db:/ma_anagrafiche/ditte>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_ANAGRAFICHE,globals.Table.DITTE);
     if(fs.find())
     {
@@ -2245,7 +2245,7 @@ function isEventoAZeroOre(idEvento)
  */
 function isEventoDaAutorizzare(idDitta,idEvento)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2eventiabilitazioni>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2eventiabilitazioni>}*/
 	var fsEvAbil = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.EVENTI_ABILITAZIONI);
 	
 	fsEvAbil.find();
@@ -2468,7 +2468,7 @@ function getFasciaAssegnataGiorno(idLav,giorno)
  */
 function ottieniRichiesteDalAl(idLavoratore,dal,al)
 {
-	/** @type {JSFoundset<db:/ma_anagrafiche/lavoratori_giustificativirighe>}*/
+	/** @type {JSFoundSet<db:/ma_anagrafiche/lavoratori_giustificativirighe>}*/
 	var fsRighe = databaseManager.getFoundSet(globals.Server.MA_ANAGRAFICHE,globals.Table.RP_RIGHE);
     
 	if(fsRighe.find())

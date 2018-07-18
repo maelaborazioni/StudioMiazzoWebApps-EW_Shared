@@ -334,7 +334,7 @@ function inviaGiornalieraSuFtp(params)
  */
 function getOrologioTimbratura(idTimbratura)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2timbratura>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2timbratura>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.TIMBRATURE);
 	if(fs.find())
 	{
@@ -366,7 +366,7 @@ function controllaAcquisizioneCM(params)
  * 
  * @param {Number} idditta
  * @param {Number} periodo
- * @param {Array<Number>} iddipendenti
+ * @param {Array<Number>} [iddipendenti]
  *
  * @return {Object}
  * 
@@ -375,9 +375,11 @@ function controllaAcquisizioneCM(params)
 function ottieniCategorieBloccanti(idditta,periodo,iddipendenti)
 {
 	// array di id dei lavoratori appartenenti alla selezione (devo considerare un eventuale filtro su gruppo di lavoro,etc)
-	var _arrDip = iddipendenti;
+	var _arrDip = iddipendenti ? iddipendenti : null;
 	// recuperiamo gli idlavoratori interessati e le tipologie di categoria 
-	var _catSql = "SELECT idDip,Categoria FROM F_Gio_ControlliChiusura(?,?,?) WHERE idDip IN (" + _arrDip.join(',') + ")";
+	var _catSql = "SELECT idDip,Categoria FROM F_Gio_ControlliChiusura(?,?,?) ";
+	if(_arrDip && _arrDip.length > 0) 
+		_catSql += "WHERE idDip IN (" + _arrDip.join(',') + ")";
 	var _catArr = [idditta,periodo,globals._tipoConnessione];
 	var _catDs = databaseManager.getDataSetByQuery(globals.Server.MA_PRESENZE, _catSql, _catArr, -1);
 	var _bloccante = false;
@@ -895,7 +897,7 @@ function ElencoFestivita(idditta, periodo)
  */
 function isPrimoInvioGiornaliera(arrIdDip,periodo)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2wk_attivitaeseguitedip>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2wk_attivitaeseguitedip>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.ATTIVITA_DIP);
 	if(fs.find())
 	{
@@ -927,7 +929,7 @@ function isPrimoInvioGiornaliera(arrIdDip,periodo)
  */
 function getUltimaOperazioneDitta(idDitta,idGruppoInst,codGruppoGestione,periodo,idTabAttivita)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2wk_attivitaeseguiteditta>} */
+	/** @type {JSFoundSet<db:/ma_presenze/e2wk_attivitaeseguiteditta>} */
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.ATTIVITA_DITTA);
 	if(fs.find())
 	{
@@ -963,7 +965,7 @@ function getUltimaOperazioneDitta(idDitta,idGruppoInst,codGruppoGestione,periodo
  */
 function getUltimaOperazioneDipendente(idDip,periodo,codAttivita)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2wk_attivitaeseguitedip>} */
+	/** @type {JSFoundSet<db:/ma_presenze/e2wk_attivitaeseguitedip>} */
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.ATTIVITA_DIP);
 	if(fs.find())
 	{
@@ -993,7 +995,7 @@ function getUltimaOperazioneDipendente(idDip,periodo,codAttivita)
  */
 function isPrimaAttivazione(idDitta,periodo)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2wk_attivitaeseguiteditta>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2wk_attivitaeseguiteditta>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.ATTIVITA_DITTA);
 	if(fs.find())
 	{
@@ -1021,7 +1023,7 @@ function isPrimaAttivazione(idDitta,periodo)
  */
 function segueTimbraturaPresenza(idDitta,causale)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2timbratureserviziogestione>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2timbratureserviziogestione>}*/
 	var fsTimbServGest = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.TIMBRATURE_SERVIZIOGESTIONE);
 	if(fsTimbServGest.find())
 	{
@@ -1046,7 +1048,7 @@ function segueTimbraturaPresenza(idDitta,causale)
  */
 function getProgrammazioneFasce(idLav,giorno)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2giornalieraprogfasce>} */
+	/** @type {JSFoundSet<db:/ma_presenze/e2giornalieraprogfasce>} */
 	var fsFasceProg = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.GIORNALIERA_PROGFASCE);
 	if(fsFasceProg.find())
 	{
@@ -1072,7 +1074,7 @@ function getProgrammazioneFasce(idLav,giorno)
  */
 function getCodDittaSedeInstallazione(idGruppoInstallazione)
 {
-	/** @type {JSFoundset<db:/ma_presenze/e2sediinstallazione>}*/
+	/** @type {JSFoundSet<db:/ma_presenze/e2sediinstallazione>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.SEDI_INSTALLAZIONE);
 	if(fs.find())
 	{
@@ -1224,7 +1226,7 @@ function esisteGiornalieraInviata(idDitta,periodo,gruppoinst,gruppolav)
  */
 function haGruppiLavoratori(idDitta)
 {
-	/** @type {JSFoundset<db:/ma_anagrafiche/ditte_presenzegruppigestione> }*/
+	/** @type {JSFoundSet<db:/ma_anagrafiche/ditte_presenzegruppigestione> }*/
 	var fsGruppi = databaseManager.getFoundSet(globals.Server.MA_ANAGRAFICHE,globals.Table.DITTE_PRESENZE_GRUPPI);
 	if(fsGruppi.find())
 	{
@@ -1248,7 +1250,7 @@ function haGruppiLavoratori(idDitta)
  */
 function getGruppiLavoratori(idDitta)
 {
-	/** @type {JSFoundset<db:/ma_anagrafiche/ditte_presenzegruppigestione> }*/
+	/** @type {JSFoundSet<db:/ma_anagrafiche/ditte_presenzegruppigestione> }*/
 	var fsGruppi = databaseManager.getFoundSet(globals.Server.MA_ANAGRAFICHE,globals.Table.DITTE_PRESENZE_GRUPPI);
 	if(fsGruppi.find())
 	{
