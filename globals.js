@@ -1434,6 +1434,9 @@ function ottieniInformazioniFasciaGiorno(idLav,giorno)
 		fsGiorn.tipodirecord = globals.TipoGiornaliera.NORMALE;
 		if(fsGiorn.search())
 		{
+			// verifica update di cambiamenti ottenuti all'esterno di Servoy (ad es. nuova regola,etc...) 
+			databaseManager.refreshRecordFromDatabase(fsGiorn,-1);
+			
 			// nel caso che per il giorno sia stata inserita una fascia forzata
 			if(fsGiorn.idfasciaorariaforzata)
 			{
