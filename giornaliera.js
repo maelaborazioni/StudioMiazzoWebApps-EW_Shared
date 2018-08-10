@@ -1192,7 +1192,7 @@ function esisteGiornalieraDaImportare(idDitta,periodo,gruppoinst,gruppolav)
 function esisteGiornalieraInviata(idDitta,periodo,gruppoinst,gruppolav)
 {
 	try
-	{
+	{		
 		var _params = globals.inizializzaParametriInvioGiornaliera(idDitta,
 															       [],
 																   periodo,
