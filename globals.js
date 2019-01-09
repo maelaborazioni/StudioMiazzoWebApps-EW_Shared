@@ -623,6 +623,30 @@ function getClasseEvento(idEvento)
 }
 
 /**
+ * Restituisce la tipologia della classe dell'evento richiesto
+ * 
+ * @param {Number} idEvento
+ *
+ * @properties={typeid:24,uuid:"7EB660CC-B05B-413A-AED6-9C133369F665"}
+ * @AllowToRunInFind
+ */
+function getTipoClasseEvento(idEvento)
+{
+	var classeEvento = getClasseEvento(idEvento);
+	
+	/** @type {JSFoundSet<db:/ma_presenze/e2eventiclassi>}*/
+	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.EVENTI_CLASSI);
+    if(fs.find())
+    {
+    	fs.ideventoclasse = classeEvento;
+    	if(fs.search())
+    		return fs.tipo;
+    }
+	
+    return null;
+}
+
+/**
  * Restituisce la descrizione della proprietà relativa alla classe di eventi richiesta
  * 
  * @param {Number} idEventoClasse
@@ -943,23 +967,36 @@ function getElencoDipendentiSenzaRegoleAssociate(params)
 function getElencoDipendentiSenzaRegoleAssociateGruppoDitte(params)
 {
    var arrElencoDip = [];
-   var aSqlSel = "SELECT D.Codice AS CodDitta, D.RagioneSociale, L.CodDipendente, ISNULL(P.Cognome, 'Dati mancanti') AS Cognome"
-   aSqlSel += ", ISNULL(P.Nome, 'C.F.: ' + L.CodiceFiscale) AS Nome, L.Assunzione, L.Cessazione, L.CodQualifica AS Qualifica"
-   aSqlSel += " , L.idLavoratore";
+   var aSqlSel = "";
+   var aSqlFrom = "";
+   var aSql = "";
+   var arrPars = [];
+   var arrDitte = params['arrDitte'];
    
-   var aSqlFrom = " FROM dbo.F_Gio_ControlloRegoleOrarie_ID(?,?,?) R"
-   aSqlFrom += " INNER JOIN V_Lavoratori L ON R.idLavoratore = L.idLavoratore"
-   aSqlFrom += " LEFT OUTER JOIN Persone P ON L.CodiceFiscale = P.CodiceFiscale"
-   aSqlFrom += " INNER JOIN Ditte D ON L.idDitta = D.idDitta"
-   //aSqlFrom += " WHERE D.idDitta = ?"
-   aSqlFrom += " ORDER BY P.Cognome, P.Nome, L.CodDipendente"
-   var aSql = aSqlSel + aSqlFrom;	   
-   var arrPars = [
-	                  -1,
-	                  params['idgruppoinstallazione'] ? params['idgruppoinstallazione'] : -1,
-	                  params['periodo']
-                  ];
-   var ds = databaseManager.getDataSetByQuery(globals.Server.MA_ANAGRAFICHE,
+   for(var i = 1; i <= arrDitte.length; i++ )
+   {
+	   aSqlSel = "";
+	   aSqlFrom = "";
+	   
+	   if(i != 1)
+		   aSqlSel += " UNION ";
+	   
+	   aSqlSel += " SELECT D.Codice AS CodDitta, D.RagioneSociale, L.CodDipendente, ISNULL(P.Cognome, 'Dati mancanti') AS Cognome"
+	   aSqlSel += ", ISNULL(P.Nome, 'C.F.: ' + L.CodiceFiscale) AS Nome, L.Assunzione, L.Cessazione, L.CodQualifica AS Qualifica"
+	   aSqlSel += " , L.idLavoratore";
+	   
+	   aSqlFrom = " FROM dbo.F_Gio_ControlloRegoleOrarie_ID(?,?,?) R"
+	   aSqlFrom += " INNER JOIN V_Lavoratori L ON R.idLavoratore = L.idLavoratore"
+	   aSqlFrom += " LEFT OUTER JOIN Persone P ON L.CodiceFiscale = P.CodiceFiscale"
+	   aSqlFrom += " INNER JOIN Ditte D ON L.idDitta = D.idDitta"
+	   aSql += ( aSqlSel + aSqlFrom );
+	   
+	   arrPars.push(arrDitte[i - 1]);
+	   arrPars.push(params['idgruppoinstallazione'] ? params['idgruppoinstallazione'] : -1);
+	   arrPars.push(params['periodo']);
+   }
+  
+  var ds = databaseManager.getDataSetByQuery(globals.Server.MA_ANAGRAFICHE,
 	                                          aSql,
 											  arrPars,
 											  -1);
@@ -1424,161 +1461,275 @@ function ottieniInformazioniFasciaGiorno(idLav,giorno)
     var codice_fascia = null;
     var descrizione = null;
     var cod_alternativo = null;
-       
-	/** @type {JSFoundset <db:/ma_presenze/e2giornaliera>} */
-	var fsGiorn = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.GIORNALIERA);
-	if(fsGiorn.find())
-	{
-		fsGiorn.iddip = idLav;
-		fsGiorn.giorno = giorno;
-		fsGiorn.tipodirecord = globals.TipoGiornaliera.NORMALE;
-		if(fsGiorn.search())
-		{
-			// verifica update di cambiamenti ottenuti all'esterno di Servoy (ad es. nuova regola,etc...) 
-			databaseManager.refreshRecordFromDatabase(fsGiorn,-1);
-			
-			// nel caso che per il giorno sia stata inserita una fascia forzata
-			if(fsGiorn.idfasciaorariaforzata)
-			{
-				idFascia = fsGiorn.idfasciaorariaforzata;
-				inizio_orario = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.inizioorario;
-				inizio_pausa = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.iniziopausa;
-				fine_pausa = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.finepausa; 
-				fine_orario = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.fineorario;
-				totale_ore_fascia = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.totaleorefascia;
-				totale_ore_pausa = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.totpausa;
-				descr_auto_generata = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.descrizautogenerata;
-				codice_fascia = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.codicefascia;
-				descrizione = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.descrizione;
-				cod_alternativo = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.codalternativo;
-			}
-			// nel caso non ci sia una fascia forzata assegnata
-			else 
-			{
-				// verifica prima la presenza di una fascia oraria programmata per il giorno in questione 
-				// se esiste è la fascia sulla quale effettuare i controlli
-				/** @type {JSFoundset <db:/ma_presenze/e2giornalieraprogfasce>} */
-				var fsProg = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.GIORNALIERA_PROGFASCE);
-				if(fsProg.find())
-				{
-					fsProg.iddip = idLav;
-					fsProg.giorno = giorno;
-					if(fsProg.search())
-					{
-						idFascia = fsProg.idfasciaoraria;
-						inizio_orario = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.inizioorario;
-						inizio_pausa = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.iniziopausa;
-						fine_pausa = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.finepausa;
-						fine_orario = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.fineorario;
-						totale_ore_fascia = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.totaleorefascia;
-						totale_ore_pausa = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.totpausa;
-						descr_auto_generata = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.descrizautogenerata;
-						codice_fascia = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.codicefascia;
-						descrizione = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.descrizione;
-						cod_alternativo = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.codalternativo;
-					}
-					// gestione fascia oraria assegnata standard
-					else
-					{
-						idFascia = fsGiorn.idfasciaorariaassegnata;
-						inizio_orario = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.inizioorario;
-						inizio_pausa = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.iniziopausa;
-						fine_pausa = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.finepausa;
-						fine_orario = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.fineorario;
-						totale_ore_fascia = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.totaleorefascia;
-						totale_ore_pausa = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.totpausa;
-						descr_auto_generata = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.descrizautogenerata;
-						codice_fascia = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.codicefascia;
-						descrizione = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.descrizione;
-						cod_alternativo = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.codalternativo;
-					}
-				}
-				else
-				    globals.ma_utl_showWarningDialog('Cannot go to find mode','Informazioni fascia giorno');
-				
-				// inserito per testare funzionamento casi senza timbrature o con una sola timbratura
-				if(inizio_orario == null)
-				{
-					var recFittizio = ottieniDatasetOrariFittizi(idFascia);
-					if(recFittizio)
-					{
-						inizio_orario = recFittizio.inizioorario;
-						inizio_pausa = recFittizio.iniziopausa;
-						fine_pausa = recFittizio.finepausa;
-						fine_orario = recFittizio.fineorario;
-						totale_ore_pausa = recFittizio.finepausa - recFittizio.iniziopausa;
-					}
-				}
-			}
-			
-		}
-		// se non è stato ancora attivato il mese per il dipendente consideriamo la fascia teorica a cui sarebbe assegnato
-		else
-		{
-			var sqlFascia = "SELECT dbo.F_Lav_IDFasciaTeorica(?,?)";
-			var arrFascia = [idLav,giorno];
-			var dsFascia = databaseManager.getDataSetByQuery(globals.Server.MA_PRESENZE,sqlFascia,arrFascia,-1);
-			
-			/** @type {JSFoundset <db:/ma_presenze/e2fo_fasceorarie>} */
-			var fsFascia = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.FASCE_ORARIE);
-			if(fsFascia.find())
-			{
-				fsFascia.idfasciaoraria = dsFascia.getValue(1,1);
-				fsFascia.search();
-			}
-			
-			idFascia = fsFascia.idfasciaoraria;
-			inizio_orario = fsFascia.inizioorario;
-			inizio_pausa = fsFascia.iniziopausa;
-			fine_pausa = fsFascia.finepausa;
-			fine_orario = fsFascia.fineorario;
-			totale_ore_fascia = fsFascia.totaleorefascia;
-			totale_ore_pausa = fsFascia.totpausa;
-			descr_auto_generata = fsFascia.descrizautogenerata;
-			codice_fascia = fsFascia.codicefascia;
-			descrizione = fsFascia.descrizione;
-			cod_alternativo = fsFascia.codalternativo;
-		}
+    
+    // TODO new code
+    var idFasciaGiorno = null;
+    var sqlFascia = "SELECT \
+              G.IdGiornaliera \
+              ,G.IdDip \
+              ,G.Giorno \
+              ,G.IdFasciaOrariaForzata AS FasciaForzata \
+              ,GPF.idFasciaOraria AS FasciaProgrammata \
+              ,G.IdFasciaOrariaAssegnata AS FasciaAssegnata \
+              ,G.Anomalie \
+              ,G.DaNonConteggiare \
+              FROM E2Giornaliera G \
+              LEFT OUTER JOIN E2GiornalieraProgFasce GPF ON G.Giorno = GPF.Giorno AND G.IdDip = GPF.IdDip \
+              INNER JOIN Lavoratori L ON G.idDip = L.idLavoratore \
+              WHERE \
+              L.idLavoratore = ? \
+              AND G.TipoDiRecord = 'N' \
+              AND G.Giorno = ? \
+              ";
+    var arrFascia = [idLav,globals.dateFormat(giorno,globals.ISO_DATEFORMAT)];
+    var dsFascia = databaseManager.getDataSetByQuery(globals.Server.MA_PRESENZE,sqlFascia,arrFascia,-1);
+    if(dsFascia.getMaxRowIndex())
+    {
+    	// ricerca informazioni sulla fascia forzata o programmata od assegnata
+    	if(dsFascia.getValue(1,4))
+    	   idFasciaGiorno = dsFascia.getValue(1,4);
+    	else if(dsFascia.getValue(1,5))
+     	   idFasciaGiorno = dsFascia.getValue(1,5);
+    	else
+    	   idFasciaGiorno = dsFascia.getValue(1,6);
+    }
+    else
+    {
+    	// ricerca fascia teorica
+    	var sqlFasciaTeo = "SELECT dbo.F_Lav_IDFasciaTeorica(?,?)";
+		var arrFasciaTeo = [idLav,globals.dateFormat(giorno,globals.ISO_DATEFORMAT)];
+		var dsFasciaTeo = databaseManager.getDataSetByQuery(globals.Server.MA_PRESENZE,sqlFasciaTeo,arrFasciaTeo,-1);
+	
+		idFasciaGiorno = dsFasciaTeo.getValue(1,1);
 		
-		// ottenimento informazioni sulle compensazioni per la fascia
-		var objInfoComp = globals.ottieniInformazioniCompensazioniFascia(idFascia);
-		if(objInfoComp != null)
-		{
-		   if(objInfoComp['asseam'])
-		   {
-			  fine_orario += objInfoComp['maxmineam'];
-		   }
-		   if(objInfoComp['assepm'])
-		   {
-			  fine_orario += objInfoComp['maxminepm'];
-		   }
-		   if(objInfoComp['assuam'])
-		   {
-			  inizio_orario =- objInfoComp['maxminuam'];
-		   }
-		   if(objInfoComp['assupm'])
-		   {
-			  inizio_orario =- objInfoComp['maxminupm'];
-		   }
-		}
-		// costruzione dell'oggetto da ritornare
-		return {
-			    idfascia : idFascia,
-			    inizioorario : inizio_orario,
-				iniziopausa : inizio_pausa,
-				finepausa : fine_pausa,
-				fineorario : fine_orario,
-				totaleorefascia : totale_ore_fascia,
-				totaleorepausa : totale_ore_pausa,
-				descrautogenerata : descr_auto_generata,
-				codicefascia : codice_fascia,
-				descrizione : descrizione,
-				codalternativo : cod_alternativo
-			   };
+    }
+    
+    
+	/** @type {JSFoundset <db:/ma_presenze/e2fo_fasceorarie>} */
+	var fsFasciaGiorn = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.FASCE_ORARIE);
+	if(fsFasciaGiorn.find())
+	{
+		fsFasciaGiorn.idfasciaoraria = idFasciaGiorno;
+		fsFasciaGiorn.search();
 	}
-	else
-		globals.ma_utl_showWarningDialog('Cannot go to find mode','Informazioni fascia giorno');
-	return null;
+	
+	idFascia = fsFasciaGiorn.idfasciaoraria;
+	inizio_orario = fsFasciaGiorn.inizioorario;
+	inizio_pausa = fsFasciaGiorn.iniziopausa;
+	fine_pausa = fsFasciaGiorn.finepausa;
+	fine_orario = fsFasciaGiorn.fineorario;
+	totale_ore_fascia = fsFasciaGiorn.totaleorefascia;
+	totale_ore_pausa = fsFasciaGiorn.totpausa;
+	descr_auto_generata = fsFasciaGiorn.descrizautogenerata;
+	codice_fascia = fsFasciaGiorn.codicefascia;
+	descrizione = fsFasciaGiorn.descrizione;
+	cod_alternativo = fsFasciaGiorn.codalternativo;    
+    
+    // ottenimento informazioni sulle compensazioni per la fascia
+	var objInfoComp = globals.ottieniInformazioniCompensazioniFascia(idFascia);
+	if(objInfoComp != null)
+	{
+	   if(objInfoComp['asseam'])
+	   {
+		  fine_orario += objInfoComp['maxmineam'];
+	   }
+	   if(objInfoComp['assepm'])
+	   {
+		  fine_orario += objInfoComp['maxminepm'];
+	   }
+	   if(objInfoComp['assuam'])
+	   {
+		  inizio_orario =- objInfoComp['maxminuam'];
+	   }
+	   if(objInfoComp['assupm'])
+	   {
+		  inizio_orario =- objInfoComp['maxminupm'];
+	   }
+	}
+	
+	// inserito per testare funzionamento casi senza timbrature o con una sola timbratura
+	if(inizio_orario == null)
+	{
+		var recFittizio = ottieniDatasetOrariFittizi(idFascia);
+		if(recFittizio)
+		{
+			inizio_orario = recFittizio.inizioorario;
+			inizio_pausa = recFittizio.iniziopausa;
+			fine_pausa = recFittizio.finepausa;
+			fine_orario = recFittizio.fineorario;
+			totale_ore_pausa = recFittizio.finepausa - recFittizio.iniziopausa;
+		}
+	}
+	
+	// costruzione dell'oggetto da ritornare
+	return {
+		    idfascia : idFascia,
+		    inizioorario : inizio_orario,
+			iniziopausa : inizio_pausa,
+			finepausa : fine_pausa,
+			fineorario : fine_orario,
+			totaleorefascia : totale_ore_fascia,
+			totaleorepausa : totale_ore_pausa,
+			descrautogenerata : descr_auto_generata,
+			codicefascia : codice_fascia,
+			descrizione : descrizione,
+			codalternativo : cod_alternativo
+		   };
+    
+//	/** @type {JSFoundset <db:/ma_presenze/e2giornaliera>} */
+//	var fsGiorn = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.GIORNALIERA);
+//	if(fsGiorn.find())
+//	{
+//		fsGiorn.iddip = idLav;
+//		fsGiorn.giorno = giorno;
+//		fsGiorn.tipodirecord = globals.TipoGiornaliera.NORMALE;
+//		if(fsGiorn.search())
+//		{
+//			// verifica update di cambiamenti ottenuti all'esterno di Servoy (ad es. nuova regola,etc...) 
+//			// databaseManager.refreshRecordFromDatabase(fsGiorn,-1);
+//			
+//			// nel caso che per il giorno sia stata inserita una fascia forzata
+//			if(fsGiorn.idfasciaorariaforzata)
+//			{
+//				idFascia = fsGiorn.idfasciaorariaforzata;
+//				inizio_orario = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.inizioorario;
+//				inizio_pausa = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.iniziopausa;
+//				fine_pausa = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.finepausa; 
+//				fine_orario = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.fineorario;
+//				totale_ore_fascia = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.totaleorefascia;
+//				totale_ore_pausa = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.totpausa;
+//				descr_auto_generata = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.descrizautogenerata;
+//				codice_fascia = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.codicefascia;
+//				descrizione = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.descrizione;
+//				cod_alternativo = fsGiorn.e2giornaliera_to_e2fo_fasceorarie_forzata.codalternativo;
+//			}
+//			// nel caso non ci sia una fascia forzata assegnata
+//			else 
+//			{
+//				// verifica prima la presenza di una fascia oraria programmata per il giorno in questione 
+//				// se esiste è la fascia sulla quale effettuare i controlli
+//				/** @type {JSFoundset <db:/ma_presenze/e2giornalieraprogfasce>} */
+//				var fsProg = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.GIORNALIERA_PROGFASCE);
+//				if(fsProg.find())
+//				{
+//					fsProg.iddip = idLav;
+//					fsProg.giorno = giorno;
+//					if(fsProg.search())
+//					{
+//						idFascia = fsProg.idfasciaoraria;
+//						inizio_orario = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.inizioorario;
+//						inizio_pausa = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.iniziopausa;
+//						fine_pausa = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.finepausa;
+//						fine_orario = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.fineorario;
+//						totale_ore_fascia = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.totaleorefascia;
+//						totale_ore_pausa = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.totpausa;
+//						descr_auto_generata = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.descrizautogenerata;
+//						codice_fascia = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.codicefascia;
+//						descrizione = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.descrizione;
+//						cod_alternativo = fsProg.e2giornalieraprogfasce_to_e2fo_fasceorarie.codalternativo;
+//					}
+//					// gestione fascia oraria assegnata standard
+//					else
+//					{
+//						idFascia = fsGiorn.idfasciaorariaassegnata;
+//						inizio_orario = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.inizioorario;
+//						inizio_pausa = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.iniziopausa;
+//						fine_pausa = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.finepausa;
+//						fine_orario = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.fineorario;
+//						totale_ore_fascia = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.totaleorefascia;
+//						totale_ore_pausa = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.totpausa;
+//						descr_auto_generata = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.descrizautogenerata;
+//						codice_fascia = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.codicefascia;
+//						descrizione = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.descrizione;
+//						cod_alternativo = fsGiorn.e2giornaliera_to_e2fo_fasceorarie.codalternativo;
+//					}
+//				}
+//				else
+//				    globals.ma_utl_showWarningDialog('Cannot go to find mode','Informazioni fascia giorno');
+//				
+//				// inserito per testare funzionamento casi senza timbrature o con una sola timbratura
+//				if(inizio_orario == null)
+//				{
+//					var recFittizio = ottieniDatasetOrariFittizi(idFascia);
+//					if(recFittizio)
+//					{
+//						inizio_orario = recFittizio.inizioorario;
+//						inizio_pausa = recFittizio.iniziopausa;
+//						fine_pausa = recFittizio.finepausa;
+//						fine_orario = recFittizio.fineorario;
+//						totale_ore_pausa = recFittizio.finepausa - recFittizio.iniziopausa;
+//					}
+//				}
+//			}
+//			
+//		}
+//		// se non è stato ancora attivato il mese per il dipendente consideriamo la fascia teorica a cui sarebbe assegnato
+//		else
+//		{
+//			var sqlFascia = "SELECT dbo.F_Lav_IDFasciaTeorica(?,?)";
+//			var arrFascia = [idLav,giorno];
+//			var dsFascia = databaseManager.getDataSetByQuery(globals.Server.MA_PRESENZE,sqlFascia,arrFascia,-1);
+//			
+//			/** @type {JSFoundset <db:/ma_presenze/e2fo_fasceorarie>} */
+//			var fsFascia = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.FASCE_ORARIE);
+//			if(fsFascia.find())
+//			{
+//				fsFascia.idfasciaoraria = dsFascia.getValue(1,1);
+//				fsFascia.search();
+//			}
+//			
+//			idFascia = fsFascia.idfasciaoraria;
+//			inizio_orario = fsFascia.inizioorario;
+//			inizio_pausa = fsFascia.iniziopausa;
+//			fine_pausa = fsFascia.finepausa;
+//			fine_orario = fsFascia.fineorario;
+//			totale_ore_fascia = fsFascia.totaleorefascia;
+//			totale_ore_pausa = fsFascia.totpausa;
+//			descr_auto_generata = fsFascia.descrizautogenerata;
+//			codice_fascia = fsFascia.codicefascia;
+//			descrizione = fsFascia.descrizione;
+//			cod_alternativo = fsFascia.codalternativo;
+//		}
+//		
+//		// ottenimento informazioni sulle compensazioni per la fascia
+//		var objInfoComp = globals.ottieniInformazioniCompensazioniFascia(idFascia);
+//		if(objInfoComp != null)
+//		{
+//		   if(objInfoComp['asseam'])
+//		   {
+//			  fine_orario += objInfoComp['maxmineam'];
+//		   }
+//		   if(objInfoComp['assepm'])
+//		   {
+//			  fine_orario += objInfoComp['maxminepm'];
+//		   }
+//		   if(objInfoComp['assuam'])
+//		   {
+//			  inizio_orario =- objInfoComp['maxminuam'];
+//		   }
+//		   if(objInfoComp['assupm'])
+//		   {
+//			  inizio_orario =- objInfoComp['maxminupm'];
+//		   }
+//		}
+//		// costruzione dell'oggetto da ritornare
+//		return {
+//			    idfascia : idFascia,
+//			    inizioorario : inizio_orario,
+//				iniziopausa : inizio_pausa,
+//				finepausa : fine_pausa,
+//				fineorario : fine_orario,
+//				totaleorefascia : totale_ore_fascia,
+//				totaleorepausa : totale_ore_pausa,
+//				descrautogenerata : descr_auto_generata,
+//				codicefascia : codice_fascia,
+//				descrizione : descrizione,
+//				codalternativo : cod_alternativo
+//			   };
+//	}
+//	else
+//		globals.ma_utl_showWarningDialog('Cannot go to find mode','Informazioni fascia giorno');
+//	return null;
 }
 
 /**
@@ -1827,11 +1978,12 @@ function ottieniOreAssenzaRichiesteGiorno(idLavoratore,giorno)
  * 
  * @param {Date} giorno
  * @param {Number} idlavoratore
+ * @param {Boolean} [refresh]
  *
  * @properties={typeid:24,uuid:"F81FF90C-153B-4108-BBD1-FDF4A3441B83"}
  * @AllowToRunInFind
  */
-function isGiornoConteggiato(idlavoratore,giorno)
+function isGiornoConteggiato(idlavoratore,giorno,refresh)
 {
 	/** @type {JSFoundSet<db:/ma_presenze/e2giornaliera>}*/
 	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.GIORNALIERA);
@@ -1844,10 +1996,42 @@ function isGiornoConteggiato(idlavoratore,giorno)
 		
 		if(fs.search() == 1)
 		{
-			databaseManager.refreshRecordFromDatabase(fs,1);
+			if(refresh)
+				databaseManager.refreshRecordFromDatabase(fs,-1);
+			
 			if((fs.anomalie == 0 || fs.anomalie >= 16) || fs.danonconteggiare == 1)
 			   return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * @AllowToRunInFind
+ * 
+ * Ritorna true se il giorno presenta un'anomalia di tipo entrata senza uscita o viceversa
+ * ed è quindi fruibile per la gestione nella cartolina dipendente
+ * 
+ * @param {Number} idlavoratore
+ * @param {Date} giorno
+ *
+ * @properties={typeid:24,uuid:"279E7405-E0CA-46D2-9371-EAB587A0937A"}
+ */
+function isGiornoConTimbratureMancanti(idlavoratore, giorno)
+{
+	/** @type {JSFoundSet<db:/ma_presenze/e2giornaliera>}*/
+	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.GIORNALIERA);
 	
+	if(fs.find())
+	{
+		fs.iddip = idlavoratore;
+		fs.giorno = giorno;
+		fs.tipodirecord = globals.TipoGiornaliera.NORMALE;
+		
+		if(fs.search() == 1)
+		{
+			if(fs.anomalie >= 4 && fs.anomalie <= 14)
+			   return true;
 		}
 	}
 	return false;
@@ -2085,6 +2269,24 @@ function utilizzaSmaltimentoRatei(idDitta)
 }
 
 /**
+ * @AllowToRunInFind
+ *
+ * @properties={typeid:24,uuid:"FAA0AF20-C74B-4EA6-88F7-19168908BEC6"}
+ */
+function getEventiMonetari()
+{
+	var arrEventiMonetari = [];
+	
+	var sqlExpr = "SELECT CONVERT(varchar(10),IdEvento) AS IdEvento FROM E2Eventi WHERE idEventoClasse IN (SELECT IdEventoClasse FROM E2EventiClassi WHERE Tipo = 'M')";
+	var arg = [];
+	var ds = databaseManager.getDataSetByQuery(globals.Server.MA_PRESENZE,sqlExpr,arg,-1);
+	if(ds.getMaxRowIndex() > 0)
+	   arrEventiMonetari = ds.getColumnAsArray(1);
+	
+	return arrEventiMonetari;
+}
+
+/**
  * Recupera gli eventi selezionabili per il particolare dipendente nel periodo richiesto
  * 
  * @param {Number} idLav
@@ -2095,6 +2297,8 @@ function utilizzaSmaltimentoRatei(idDitta)
  */
 function FiltraEventiSelezionabili(idLav,periodo,tipoGiorn)
 {	
+	_arrIdEvSelezionabili = [];
+	
 	var bReturn = false
 	var url = globals.WS_URL + "/Eventi/FiltraEventi"
 	var params = globals.inizializzaParametriFiltroEvento(
@@ -2112,7 +2316,16 @@ function FiltraEventiSelezionabili(idLav,periodo,tipoGiorn)
 	if (bReturn === true)
 	{
 		/** @type {Array} */
-		_arrIdEvSelezionabili = _responseObj['eventi'];
+		var arrIdEvSelezionabili = _responseObj['eventi'];
+		
+		var arrIdEvMonetari = getEventiMonetari();
+		
+		for(var ev = 0; ev < arrIdEvSelezionabili.length; ev++)
+		{
+			if(arrIdEvMonetari.indexOf(arrIdEvSelezionabili[ev]) == -1)
+				_arrIdEvSelezionabili.push(arrIdEvSelezionabili[ev]);
+		}
+		
 		if (_arrIdEvSelezionabili.length == 0)
 			globals.ma_utl_showErrorDialog('Non esistono eventi selezionabili, riprovare o verificare','Nessun evento selezionabile in giornaliera')
     }	
@@ -2319,25 +2532,25 @@ function calcolaOreEvento(dalleOre,alleOre,inizioOrario,inizioPausa,finePausa,fi
 	var vTotaleOre;
 	var vTotaleMinuti;
 	var vTotaleMinutiFormat;
-	inizioPausa += totOrePausa;
-	finePausa -= totOrePausa;
 	var vPausa = inizioPausa && finePausa;
-	
+		
 	if(dalleOre < inizioOrario)
 	   vDalleOre = inizioOrario;
 	else if(vPausa 
 			&& inizioPausa < dalleOre 
-			&& dalleOre < finePausa)
-	   vDalleOre = finePausa;
+			&& dalleOre < finePausa
+			&& totOrePausa == null) // se totOrePausa != null allora la pausa è variabile e consentiamo l'inserimento a prescindere in quanto non possiamo fare calcoli
+		 vDalleOre = finePausa;
 	       
 	if(fineOrario != null && alleOre > fineOrario)
 	   vAlleOre = fineOrario;
 	else if(vPausa
 			&& inizioPausa < alleOre
-			&& alleOre < finePausa)
+			&& alleOre < finePausa
+			&& totOrePausa == null) // se totOrePausa != null allora la pausa è variabile e consentiamo l'inserimento a prescindere in quanto non possiamo fare calcoli
 	   vAlleOre = inizioPausa;
 	
-	if(vPausa && dalleOre <= inizioPausa && alleOre >= finePausa)
+	if(vPausa && vDalleOre <= inizioPausa && vAlleOre >= finePausa)
 	{
 	   if(totOrePausa == null)
 	   {
