@@ -601,6 +601,28 @@ function getCodiceEvento(idEvento)
 }
 
 /**
+ * Restituisce il codice dell'evento passato come parametro
+ * 
+ * @param {String} codEvento
+ *
+ * @properties={typeid:24,uuid:"1CE2E536-529A-469C-A931-EF5206357AB0"}
+ * @AllowToRunInFind
+ */
+function getIdEvento(codEvento)
+{
+	/** @type {JSFoundSet<db:/ma_presenze/e2eventi>}*/
+	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.EVENTI);
+    if(fs.find())
+    {
+    	fs.evento = codEvento;
+    	if(fs.search())
+    		return fs.idevento;
+    }
+	
+    return null;
+}
+
+/**
  * Restituisce l'identificativo della classe dell'evento richiesto
  * 
  * @param {Number} idEvento
@@ -1999,7 +2021,7 @@ function isGiornoConteggiato(idlavoratore,giorno,refresh)
 			if(refresh)
 				databaseManager.refreshRecordFromDatabase(fs,-1);
 			
-			if((fs.anomalie == 0 || fs.anomalie >= 16) || fs.danonconteggiare == 1)
+			if(fs.anomalie == 0 || fs.anomalie >= 16)
 			   return true;
 		}
 	}
@@ -2031,10 +2053,10 @@ function isGiornoConTimbratureMancanti(idlavoratore, giorno)
 		if(fs.search() == 1)
 		{
 			if(fs.anomalie >= 4 && fs.anomalie <= 14)
-			   return true;
+			   return fs.anomalie;
 		}
 	}
-	return false;
+	return 0;
 }
 
 /**
@@ -2287,6 +2309,22 @@ function getEventiMonetari()
 }
 
 /**
+ * @properties={typeid:24,uuid:"FBA3B487-2374-42BB-9C6A-CD8B1DA4AE86"}
+ */
+function getEventiNonSelezionabiliDaUtente()
+{
+	var arrEventiMonetari = [];
+	
+	var sqlExpr = "SELECT CONVERT(varchar(10),IdEvento) AS IdEvento FROM E2Eventi WHERE idEventoClasse IN (SELECT IdEventoClasse FROM E2EventiClassi WHERE Tipo IN('M','F'))";
+	var arg = [];
+	var ds = databaseManager.getDataSetByQuery(globals.Server.MA_PRESENZE,sqlExpr,arg,-1);
+	if(ds.getMaxRowIndex() > 0)
+	   arrEventiMonetari = ds.getColumnAsArray(1);
+	
+	return arrEventiMonetari;
+}
+
+/**
  * Recupera gli eventi selezionabili per il particolare dipendente nel periodo richiesto
  * 
  * @param {Number} idLav
@@ -2318,11 +2356,11 @@ function FiltraEventiSelezionabili(idLav,periodo,tipoGiorn)
 		/** @type {Array} */
 		var arrIdEvSelezionabili = _responseObj['eventi'];
 		
-		var arrIdEvMonetari = getEventiMonetari();
+		var arrIdEvNonSelezionabili = getEventiNonSelezionabiliDaUtente();
 		
 		for(var ev = 0; ev < arrIdEvSelezionabili.length; ev++)
 		{
-			if(arrIdEvMonetari.indexOf(arrIdEvSelezionabili[ev]) == -1)
+			if(arrIdEvNonSelezionabili.indexOf(arrIdEvSelezionabili[ev]) == -1)
 				_arrIdEvSelezionabili.push(arrIdEvSelezionabili[ev]);
 		}
 		
@@ -2690,6 +2728,32 @@ function ottieniRichiesteDalAl(idLavoratore,dal,al)
 	if(fsRighe.find())
 	{
 		fsRighe.idlavoratore = idLavoratore;
+		fsRighe.giorno = utils.dateFormat(dal,globals.ISO_DATEFORMAT) + '...' + utils.dateFormat(al,globals.ISO_DATEFORMAT) + '|yyyyMMdd';
+		if(fsRighe.search())
+		   return fsRighe;
+	}
+	
+	return null;
+}
+
+/**
+ * Recupera le richieste dell'insieme di lavoratori per il periodo indicato
+ * 
+ * @param {Array<Number>} arrIdLavoratori
+ * @param {Date} dal
+ * @param {Date} al
+ * 
+ * @properties={typeid:24,uuid:"4E20AA17-88CE-4F24-9B32-FD585E56452F"}
+ * @AllowToRunInFind
+ */
+function ottieniRichiesteLavoratoriDalAl(arrIdLavoratori,dal,al)
+{
+	/** @type {JSFoundSet<db:/ma_anagrafiche/lavoratori_giustificativirighe>}*/
+	var fsRighe = databaseManager.getFoundSet(globals.Server.MA_ANAGRAFICHE,globals.Table.RP_RIGHE);
+    
+	if(fsRighe.find())
+	{
+		fsRighe.idlavoratore = arrIdLavoratori;
 		fsRighe.giorno = utils.dateFormat(dal,globals.ISO_DATEFORMAT) + '...' + utils.dateFormat(al,globals.ISO_DATEFORMAT) + '|yyyyMMdd';
 		if(fsRighe.search())
 		   return fsRighe;
