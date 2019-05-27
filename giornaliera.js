@@ -863,7 +863,6 @@ function ElencoFestivita(idditta, periodo)
 {
 	var gruppoInstallazione = globals.getGruppoInstallazioneDitta(idditta);
 	
-//	var params = globals.inizializzaParametriAttivaMese(idditta, periodo, gruppoInstallazione, '', globals.TipoConnessione.CLIENTE);
 	var _pars = {tipoconnessione : globals.TipoConnessione.CLIENTE,
 		databasecliente : globals.customer_dbserver_name,
 		periodo : periodo,
