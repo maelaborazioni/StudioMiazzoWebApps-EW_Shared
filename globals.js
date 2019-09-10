@@ -933,6 +933,7 @@ function getElencoDipendentiSenzaRegoleAssociateWS(params)
 function getElencoDipendentiSenzaRegoleAssociate(params)
 {
    var arrElencoDip = [];
+   
    var aSqlSel = "SELECT D.Codice AS CodDitta, D.RagioneSociale, L.CodDipendente, ISNULL(P.Cognome, 'Dati mancanti') AS Cognome"
    aSqlSel += ", ISNULL(P.Nome, 'C.F.: ' + L.CodiceFiscale) AS Nome, L.Assunzione, L.Cessazione, L.CodQualifica AS Qualifica"
    aSqlSel += " , L.idLavoratore";
@@ -942,8 +943,22 @@ function getElencoDipendentiSenzaRegoleAssociate(params)
    aSqlFrom += " LEFT OUTER JOIN Persone P ON L.CodiceFiscale = P.CodiceFiscale"
    aSqlFrom += " INNER JOIN Ditte D ON L.idDitta = D.idDitta"
    aSqlFrom += " WHERE D.idDitta = ?"
+   
+   // TODO filtri su sedi,centri di costo,etc in Autorizzazioni
+   var lavoratori_inclusi = [], lavoratori_esclusi = [];
+	
+   lavoratori_inclusi = globals.getLavoratoriFiltri(false);
+   lavoratori_esclusi = globals.getLavoratoriFiltri(true);
+		
+   if(lavoratori_inclusi && lavoratori_inclusi.length)	
+   	  aSqlFrom += " AND L.idLavoratore IN (" + lavoratori_inclusi.join(',') + ")";	
+   	
+   if(lavoratori_esclusi && lavoratori_esclusi.length)	
+   	  aSqlFrom += " AND L.idLavoratore NOT IN (" + lavoratori_esclusi.join(',') + ")";
+	   		  
    aSqlFrom += " ORDER BY P.Cognome, P.Nome, L.CodDipendente"
    var aSql = aSqlSel + aSqlFrom;	   
+   
    var arrPars = [params['idditta'],
                   params['idgruppoinstallazione'] ? params['idgruppoinstallazione'] : -1,
                   params['periodo'],
@@ -2759,5 +2774,36 @@ function ottieniRichiesteLavoratoriDalAl(arrIdLavoratori,dal,al)
 		   return fsRighe;
 	}
 	
+	return null;
+}
+
+/**
+ * Ottieni la data in cui è avvenuta l'ultima importazione delle timbrature
+ *
+ * @param {Array<Number>} idditte
+ *
+ * @return Date
+ * 
+ * @properties={typeid:24,uuid:"9A1B5B98-83DF-4EC2-8373-5C7157533795"}
+ * @AllowToRunInFind
+ */
+function getDataUltimoScarico(idditte)
+{
+	/** @type {JSFoundSet<db:/ma_presenze/e2wk_attivitaeseguiteditta>}*/
+	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.ATTIVITA_DITTA);
+	
+	if(fs.find())
+	{
+		fs.idditta = idditte;
+		fs.e2wk_attivitaeseguiteditta_to_e2wk_tabattivita.codice = globals.AttivitaDitta.IMPORTAZIONE_TIMBRATURE;
+		
+		if(fs.search() > 0)
+		{
+		   fs.sort('ultimaesecuzioneil desc');
+		   return fs.ultimaesecuzioneil;
+		}
+		else
+			return null;
+	}
 	return null;
 }
