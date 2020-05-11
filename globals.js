@@ -1531,14 +1531,17 @@ function ottieniInformazioniFasciaGiorno(idLav,giorno)
     	   idFasciaGiorno = dsFascia.getValue(1,6);
     }
     else
-    {
+    {  	
     	// ricerca fascia teorica
-    	var sqlFasciaTeo = "SELECT dbo.F_Lav_IDFasciaTeorica(?,?)";
-		var arrFasciaTeo = [idLav,globals.dateFormat(giorno,globals.ISO_DATEFORMAT)];
+    	var sqlFasciaTeo = "SELECT idFasciaOraria \
+    						FROM dbo.F_Lav_RegolaPeriodo(?, ?, ?) \
+    						AS Regole \
+							LEFT OUTER JOIN E2RegoleFasce RF ON Regole.idRegole = RF.idRegole AND Regole.Riga = RF.Riga \
+							LEFT OUTER JOIN E2FO_FasceOrarie FO ON RF.idFasceOrarie = FO.idFasciaOraria";
+		var arrFasciaTeo = [idLav,globals.dateFormat(giorno,globals.ISO_DATEFORMAT),globals.dateFormat(giorno,globals.ISO_DATEFORMAT)];
 		var dsFasciaTeo = databaseManager.getDataSetByQuery(globals.Server.MA_PRESENZE,sqlFasciaTeo,arrFasciaTeo,-1);
 	
-		idFasciaGiorno = dsFasciaTeo.getValue(1,1);
-		
+		idFasciaGiorno = dsFasciaTeo.getValue(1,1);		
     }
     
     
@@ -2386,33 +2389,6 @@ function FiltraEventiSelezionabili(idLav,periodo,tipoGiorn)
 	  globals.ma_utl_showErrorDialog('Filtraggio eventi selezionabili non riuscito','Nessun evento selezionabile in giornaliera');
 	
 	return bReturn;
-}
-
-/**
- * @properties={typeid:24,uuid:"71AD2AB6-BD3F-4521-9B0F-1AB76D4F2527"}
- */
-function FiltraEventiSelezionabiliDittaPeriodo(idDitta,periodo)
-{
-	var url = globals.WS_URL + "/Eventi/FiltraEventiDitta"
-	
-	var params = globals.inizializzaParametriInvioGiornaliera(idDitta
-		                                                  ,[]
-		                                                  ,periodo
-														  ,globals.getGruppoInstallazioneDitta(idDitta)
-														  ,''
-														  ,globals.TipoConnessione.CLIENTE);
-	
-	var response = globals.getWebServiceResponse(url, params);
-	if (response['returnValue'] === true)
-	{
-		/** @type {Array} */
-		globals._arrIdEvSelezionabili = response['eventi'];
-		if (globals._arrIdEvSelezionabili.length > 0)
-			globals.ma_utl_showWarningDialog('Non esistono eventi selezionabili, riprovare o verificare','i18n:hr.msg.attention');
-				
-	}	
-	
-	return response['returnValue'];
 }
 
 /**
