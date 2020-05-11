@@ -40,7 +40,7 @@ function attivaMese(ditta, periodo, gruppoInstallazione, gruppoLavoratori, sync,
 	
 	var result = { error: false, message: 'Attivazione completata con successo' };
 	
-	var response = globals.preAttivaMese(params, nonInteractive != null ? nonInteractive : true);
+	var response = scopes.giornaliera.preAttivaMese(params, nonInteractive != null ? nonInteractive : true);
 	if (response !== globals.TipoAttivazione.NEGATA)
 	{
 		//controlliamo la presenza di dipendenti senza regole associate
@@ -62,13 +62,23 @@ function attivaMese(ditta, periodo, gruppoInstallazione, gruppoLavoratori, sync,
 			result = { error: true, message: 'Errore durante l\'attivazione del mese, contattare lo studio' };
 		}
 
-		if(!responseChkDip['returnValue'])
+		if(!responseChkDip.StatusCode == globals.HTTPStatusCode.OK || !responseChkDip.ReturnValue)
 		{
 			globals.ma_utl_logError(new Error('checkDipendentiDaAttivare: check non riuscito'));
 			result = { error: true, message: 'Errore durante l\'attivazione del mese, contattare lo studio' };
 		}		
 
-		if(responseChkDip.activate)
+			// add new operation info for future updates
+			var operation = scopes.operation.create(ditta,gruppoInstallazione,periodo,globals.OpType.AM);
+			if(operation == null || operation.operationId == null)
+			{
+				globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
+				return null;
+			}
+			
+			params.operationid = operation.operationId;
+			params.operationhash = operation.operationHash;
+
 			globals.attivazioneMese(params);
 	}
 	
@@ -87,7 +97,18 @@ function controlliPreliminari(params, continueWithCallback, handlePrintCallback)
 	if(!cancellaChiusuraDipPerOperazione(params.iddipendenti, params.idditta, params.periodo)) 
 		return { error: true, message: 'Errore in cancellazione chiusura operazione, contattare lo studio' };
 
-    var url = globals.WS_MULTI_URL + "/Ratei/ControlliPreliminari";
+	// add new operation info for future updates
+	/** @type {{statusCode : Number, returnValue: Object, message : String, operationId : String, operationHash : String, status : Number, start : Date, end : Date, progress : Number, lastProgress : Date}} */
+	var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.CP);
+	if(operation == null || operation.operationId == null)
+	{
+		globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
+		return { error : true, message: 'Errore durante la preparazione dell\'operazione lunga.'};
+	}
+	params.operationid = operation.operationId;
+	params.operationhash = operation.operationHash;	
+		
+    var url = globals.WS_CALENDAR + "/Control32/ControlliPreliminariAsync";
     	
     // nel caso cliente va verificato che il flusso sia completo quindi che abbia
     // scaricato la giornaliera del mese precedente
@@ -95,20 +116,20 @@ function controlliPreliminari(params, continueWithCallback, handlePrintCallback)
 	{
 		// controllaAcquisizione ritorna un numero a seconda della situazione
 		var response = controllaAcquisizioneCP(params);
-    	if (response.returnValue && response.returnValue == 1)
+    	if (response && response.ReturnValue)
     	{
-		    if(!response['retValue'])
+		    if(!response.ReturnValue)
 		    {
 		    	// acquisizioni periodi precedenti non completate
 		    	var periodoPrecedente = scopes.date.AddMonths(scopes.date.FromIntMonth(params.periodo), -1);
 				
 		    	response = importaTracciatoDaFtp(params.idditta, scopes.date.ToIntMonth(periodoPrecedente), params.idgruppoinstallazione, params.codgruppogestione);
-		    	if(!response || !response.returnValue)
-		    		return { error: true, message: 'Errore durante l\'importazione della giornaliera di ' + utils.dateFormat(periodoPrecedente, 'MMMM YYYY') + ', contattare lo studio.' };
-		    		
+		    	if(!response || !response.ReturnValue)
+		    		return{error : true, message : 'Errore durante l\'importazione della giornaliera di ' + utils.dateFormat(periodoPrecedente, 'MMMM YYYY') + ', contattare lo studio.'};
+		    			
 		    	response = controllaAcquisizioneCP(params);
-		    	if(!response || !response.returnValue || !response.retValue)
-		    		return { error: true, message: 'Errore in controllo acquisizione, contattare lo studio' };
+		    	if(!response || !response.ReturnValue)
+		    	   	return{error : true, message : 'Errore in controllo acquisizione, contattare lo studio'};
 		    }
 		    
 		    if(params.sync)
@@ -120,23 +141,21 @@ function controlliPreliminari(params, continueWithCallback, handlePrintCallback)
 	    			for(var f = 0; f < response.files.length; f++)
 	    				handlePrintCallback(response.files[f]);
 	    		
-	    		return { error: !response.returnValue, message: response.message };
+	    		return {error : !response.ReturnValue, message : response.Message};
 	    	}
 	    	else
 		    	// acquisizione precedente ok, procedere con i controlli preliminari
-		    	globals.addJsonWebServiceJob(url, params, globals.vUpdateOperationStatusFunction, null, continueWithCallback);
+		    	return globals.addJsonWebServiceJob(url += 'Async', params, globals.vUpdateOperationStatusFunction, null, continueWithCallback);
 	    } 
     	else
-    		return { error: true, message: 'Errore in controllo acquisizione, contattare lo studio' };
+    		return null;
 	}
 	else
-		globals.addJsonWebServiceJob(url,
-			                         params,
-									 globals.vUpdateOperationStatusFunction,
-									 null,
-									 continueWithCallback);
-	
-	return { error: false, message: '' };
+		return globals.addJsonWebServiceJob(url,
+				                         params,
+										 globals.vUpdateOperationStatusFunction,
+										 null,
+										 continueWithCallback);
 }
 
 /** 
@@ -173,10 +192,10 @@ function chiusuraMeseCliente(params, continueWithCallback, nonInteractive)
 	if (response) 
 	{
 		// risposta ottenuta
-		if(response['returnValue']) 
+		if(response) 
 		{
 			// acquisizioni precedenti ok, proseguire con i controlli chiusura
-			if(response['retValue'] == 1)
+			if(response.ReturnValue)
 			{
 				var categorieBloccanti = ottieniCategorieBloccanti(params.idditta, params.periodo, params.iddipendenti);
 				if (categorieBloccanti.bloccante)
@@ -199,7 +218,8 @@ function chiusuraMeseCliente(params, continueWithCallback, nonInteractive)
 							return { error: false, message: 'Operazione interrotta dall\'utente' };
 				    }
 					
-					return chiudiMeseSelezionato(params, continueWithCallback);
+					chiudiMeseSelezionato(params, continueWithCallback);
+					return { error: false, message : ''};
 			    }
 			}
 			// acquisizioni precedenti non ok, verificare se necessario chiedere scarico timbrature
@@ -214,7 +234,7 @@ function chiusuraMeseCliente(params, continueWithCallback, nonInteractive)
 			       var periodoPrecedente = scopes.date.AddMonths(scopes.date.FromIntMonth(params.periodo), -1);
 					
 			    	response = importaTracciatoDaFtp(params.idditta, scopes.date.ToIntMonth(periodoPrecedente), params.idgruppoinstallazione, params.codgruppogestione);
-			    	if(!response || !response.returnValue)
+			    	if(!response || !response.ReturnValue)
 			    		return { error: true, message: 'Errore durante l\'importazione della giornaliera di ' + utils.dateFormat(periodoPrecedente, globals.EU_DATEFORMAT) + ', contattare lo studio.' };
 				   
 			    }
@@ -246,10 +266,10 @@ function getDipendentiDaChiudere(params)
 	/** @type Object */
 	var objMancanti = { response: false, iddipendenti: [] };
 			
-	var url      = globals.WS_URL + "/Trattamenti/ElencoDipendentiMancanti";
+	var url      = globals.WS_CALENDAR + "/Consolidating32/ElencoDipendentiMancanti";
 	var response = globals.getWebServiceResponse(url, params);
 	
-	if (response && response.returnValue)
+	if (response && response.ReturnValue)
 	{
 		objMancanti.response     = true;
 		objMancanti.iddipendenti = response['dipArray'];
@@ -267,11 +287,22 @@ function getDipendentiDaChiudere(params)
  */
 function chiudiMeseSelezionato(params, continueWithCallback)
 {
+	// add new operation info for future updates
+	/** @type {{statusCode : Number, returnValue: Object, message : String, operationId : String, operationHash : String, status : Number, start : Date, end : Date, progress : Number, lastProgress : Date}} */
+	var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.CM);
+	if(operation == null || operation.operationId == null)
+	{
+		globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
+		return null;
+	}
+	params.operationid = operation.operationId;
+	params.operationhash = operation.operationHash;
+	
 	//otteniamo l'array dei dipendenti mancanti
 	if(params.iddipendenti && params.iddipendenti.length > 0)
 		return chiusuraMese(params, continueWithCallback);
 	
-	return { error: false, message: '' };
+	return null;
 }
 
 /**
@@ -283,22 +314,27 @@ function chiudiMeseSelezionato(params, continueWithCallback)
  */
 function chiusuraMese(params, continueWithCallback)
 {
-	var url = globals.WS_MULTI_URL + "/Trattamenti/ChiusuraMese";
+	var url = globals.WS_CALENDAR + "/Consolidating32/ChiusuraMese";
 	if(params.sync)
 	{
 		url += 'Sync';
-		var response = globals.getWebServiceResponse(url, params);
-		
-		return { error: !response.returnValue, message: response.message };
+		return globals.getWebServiceResponse(url, params);
 	}
-	else
-		globals.addJsonWebServiceJob(url,
-			                         params,
-									 globals.vUpdateOperationStatusFunction,
-									 null,
-									 continueWithCallback);
 	
-	return { error: false, message: '' };
+	// add new operation info for future updates
+	var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.IT);
+	if(operation == null || operation.operationId == null)
+	{
+		globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
+		return { StatusCode: globals.HTTPStatusCode.INTERNAL_ERROR , ReturnValue : false, Message : 'Errore durante la preparazione dell\'operazione lunga.'}; 
+	}
+	params.operationid = operation.operationId;
+	params.operationhash = operation.operationHash;
+	return globals.addJsonWebServiceJob(url + 'Async',
+				                        params,
+										globals.vUpdateOperationStatusFunction,
+										null,
+										continueWithCallback);	
 }
 
 /**
@@ -311,16 +347,20 @@ function chiusuraMese(params, continueWithCallback)
  */
 function inviaGiornalieraSuFtp(params)
 {
-	var ftpUrl = globals.WS_MULTI_URL + "/Giornaliera/InviaGiornalieraSuFtp";
+	var ftpUrl = globals.WS_LU + "/Lu32/InviaGiornalieraSuFtp";
 	if(params.sync)
-	{
-		var result = globals.getWebServiceResponse(ftpUrl + 'Sync', params);
-		return { error: !result.returnValue, message: result.message };
-	}
-	else
-		globals.addJsonWebServiceJob(ftpUrl, params);
+		return globals.getWebServiceResponse(ftpUrl + 'Sync', params);
 	
-	return { error: false, message: '' };
+	// add new operation info for future updates
+	var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.IG);
+	if(operation == null || operation.operationId == null)
+	{
+		globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
+		return { StatusCode : globals.HTTPStatusCode.INTERNAL_ERROR, ReturnValue : false, Message : 'Errore durante la preparazione dell\'operazione lunga' };
+	}
+	params.operationid = operation.operationId;
+	params.operationhash = operation.operationHash;
+	return globals.addJsonWebServiceJob(ftpUrl + 'Async', params);
 }
 
 /**
@@ -350,16 +390,16 @@ function getOrologioTimbratura(idTimbratura)
  * la fattibilità o meno della chiusura del mese selezionato
  * 
  * @param {Object} params
- *
+ * 
+ * @return {{ReturnValue: Object, StatusCode: Number, Message: String}}
+ * 
  * @properties={typeid:24,uuid:"F8790161-C403-403A-9804-E6D606AF02BE"}
  */
 function controllaAcquisizioneCM(params)
 {
-   var url = globals.WS_URL + '/Trattamenti/ControlloAcquisizioneCM';
-   var response = globals.getWebServiceResponse(url, params);	
-   
-   return response;
-}
+   var url = globals.WS_CALENDAR + '/Calendar32/ControlloAcquisizioneCM';
+   return globals.getWebServiceResponse(url, params);	
+ }
 
 /**
  * Recupera l'oggetto relativo alle info sulle categorie bloccanti
@@ -437,17 +477,17 @@ function ottieniCategorieBloccanti(idditta,periodo,iddipendenti)
  *  
  * @param {Object} params
  * 
+ * @return {{ReturnValue: Object, StatusCode: Number, Message: String}}
+ * 
  * @properties={typeid:24,uuid:"BDFF3AD4-CEDD-4935-A600-CF87F314CF45"}
  */
 function controllaAcquisizioneCP(params)
 {
 	if(globals._tipoConnessione == globals.Connessione.SEDE)
-		   return { returnValue: true, retValue : 1, message: ''};
-	   else
-	   {
-		   var url = globals.WS_URL + '/Trattamenti/ControlloAcquisizioneCP';
-		   return globals.getWebServiceResponse(url, params);	
-	   }
+		   return null;
+	
+	var url = globals.WS_CALENDAR + '/Calendar32/ControlloAcquisizioneCP';
+	return globals.getWebServiceResponse(url, params);	
 }
 
 /**
@@ -467,39 +507,59 @@ function importaTracciatoDaFtp(idditta,periodo,gruppoinstallazione,gruppolavorat
 	gruppoinstallazione = gruppoinstallazione || globals.getGruppoInstallazione();
 	gruppolavoratori    = gruppolavoratori    || globals.getGruppoLavoratori();
 	
-	var params = inizializzaParametriTracciatoMese(idditta,
-		                                           periodo || globals.getPeriodo(),
-		                                           gruppoinstallazione,
-												   gruppolavoratori,
-												   [-1],
-													-1,
-												   globals.getTipoConnessione());
+	var params = globals.inizializzaParametriAcquisizioneGiornaliera(idditta,
+																	 [-1],															 
+																	 periodo || globals.getPeriodo(),
+							                                         gruppoinstallazione,
+							                                         gruppolavoratori,
+																	 globals.getTipoConnessione());
         
 	params.sync = true;
-	return importaDaFtp(params);
+	return importaDaFtpSync(params);
 }
 
 /**
- * Lancia l'importazione della giornaliera da ftp (operazione lunga)
+ * Lancia l'importazione della giornaliera da ftp sincrona (operazione lunga)
  * 
  * @param {Object} params
+ * 
+ * @return {{ReturnValue: Object, StatusCode: Number, Message: String}}
  *
+ * @properties={typeid:24,uuid:"DFDC8A9E-6420-4BF3-A03D-AD8F6A1B911D"}
+ */
+function importaDaFtpSync(params)
+{
+	var ftpUrl = globals.WS_LU + "/Lu32/ImportaDaFtpSync";
+	return globals.getWebServiceResponse(ftpUrl, params);
+}
+
+/**
+ * Lancia l'importazione della giornaliera da ftp asincrona (operazione lunga)
+ * 
+ * @param {Object} params
+ * 
+ * @return {{statusCode : Number, returnValue: Object, message : String, operationId : String, operationHash : String, status : Number, start : Date, end : Date, progress : Number, lastProgress : Date}}
+ * 
  * @properties={typeid:24,uuid:"EBB62843-E9E9-4EB3-BE41-7404B4535114"}
  */
-function importaDaFtp(params)
+function importaDaFtpAsync(params)
 {
-	var ftpUrl = globals.WS_MULTI_URL + "/Giornaliera/ImportaDaFtp";
-	if (params.sync)
+	var ftpUrl = globals.WS_LU + "/Lu32/ImportaDaFtpAsync";
+	// add new operation info for future updates
+	var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.IT);
+	if(operation == null || operation.operationId == null)
 	{
-		ftpUrl += 'Sync';
-		return globals.getWebServiceResponse(ftpUrl, params);
+		globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
+		return { statusCode: globals.HTTPStatusCode.INTERNAL_ERROR , returnValue : false, message : 'Errore durante la preparazione dell\'operazione lunga.',
+			     operationId : null, operationHash: '', status : -1, start : null, end : null, progress : null, lastProgress : null}; 
 	}
-	else
-		globals.addJsonWebServiceJob(ftpUrl,
-			                         params,
-									 globals.vUpdateOperationStatusFunction);
+	params.operationid = operation.operationId;
+	params.operationhash = operation.operationHash;
 	
-	return { returnValue: true, message: '' };
+	globals.addJsonWebServiceJob(ftpUrl,
+        	                     params,
+								 globals.vUpdateOperationStatusFunction);
+	return operation;
 }
 
 /**
@@ -546,9 +606,9 @@ function inizializzaParametriTracciatoMese(_idditta, _periodo, _gruppoinst, _gru
 function preAttivaMese(params, nonInteractive)
 {
 	var response = isMeseDaAttivare(params);
-    if (response && response.returnValue && response['returnValue'] === true) 
+    if (response && response.StatusCode == globals.HTTPStatusCode.OK) 
     {
-	   if(response.activate && response['activate'] === true)
+	   if(response.ReturnValue === true)
 	   {				   
 	   	 var answer = nonInteractive == true || globals.ma_utl_showYesNoQuestion('Attivare il mese in giornaliera?', 'Mese non ancora attivato');
 		 if (answer)
@@ -559,12 +619,11 @@ function preAttivaMese(params, nonInteractive)
 	   else
 	   	   return globals.TipoAttivazione.NON_NECESSARIA;  // attivazione non necessaria
     }
-    else if(response)
+    else 
     {
     	globals.ma_utl_showErrorDialog(response['message'], 'Errore');
     	return -1;
     }
-    return -1;
 }
 
 /**
@@ -572,32 +631,14 @@ function preAttivaMese(params, nonInteractive)
  * 
  * @param {Object} params
  * 
- * @return Object
+ * @return {{ReturnValue: Object, StatusCode: Number, Message: String}}
  * 
  * @properties={typeid:24,uuid:"6FC94872-5B39-4B9C-B465-35E3AE4CACE1"}
  */
 function isMeseDaAttivare(params)
 {		
-	var url = globals.WS_URL + "/Trattamenti/DittaDaAttivare";	
+	var url = globals.WS_CALENDAR + "/Calendar32/DittaDaAttivare";	
 	return globals.getWebServiceResponse(url, params);		
-}
-
-/**
- * @param {Number} idditta
- * @param {Number} idgruppoinstallazione
- * 
- * @return {{ returnValue: Boolean, message: String, periodi: Array<Number>}}
- *
- * @properties={typeid:24,uuid:"F3697386-1DFD-4C52-9062-76D56F185796"}
- */
-function PeriodiDaImportare(idditta, idgruppoinstallazione)
-{
-	var params = { idditta: idditta, idgruppoinstallazione: idgruppoinstallazione };
-	var url    = globals.WS_URL + '/Giornaliera/PeriodiDaImportare';
-	/** @type {{ returnValue: Boolean, message: String, periodi: Array<Number>}} */
-	var result = globals.getWebServiceResponse(url, params);
-	
-	return result;
 }
 
 /**
@@ -606,14 +647,12 @@ function PeriodiDaImportare(idditta, idgruppoinstallazione)
  * @param {Object}    params
  * @param {Function} [callback]
  * 
- * @return {{ returnValue: Boolean, message: String }}
- *
  * @properties={typeid:24,uuid:"A38FC715-D774-4339-8F81-777F4903415D"}
  */
 function importaGiornaliera(params, callback)
 {
 	var response = { returnValue: true, message: '' };
-	var url      = globals.WS_MULTI_URL + "/Giornaliera/ImportaDaFtp";
+	var url      = globals.WS_LU + "/Lu32/ImportaDaFtp";
 	
 	if(params.sync)
 	{
@@ -621,12 +660,25 @@ function importaGiornaliera(params, callback)
 		response = globals.getWebServiceResponse(url, params);
 	}
 	else
-		globals.addJsonWebServiceJob(url,
+	{
+		// add new operation info for future updates
+		var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.IT);
+		if(operation == null || operation.operationId == null)
+		{
+			globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
+			response.ReturnValue = false;
+			response.Message = 'Errore durante la preparazione dell\'operazione lunga';
+			response.StatusCode = globals.HTTPStatusCode.INTERNAL_ERROR;
+			return response;
+		}
+		params.operationid = operation.operationId;
+		params.operationhash = operation.operationHash;
+		globals.addJsonWebServiceJob(url + 'Async',
 			                         params,
 									 globals.vUpdateOperationStatusFunction,
 									 null,
 									 callback);
-	
+	}
 	return response;
 }
 
@@ -643,8 +695,18 @@ function importaGiornaliera(params, callback)
 function importaDatiDittaDipendenti(params, callback)
 {
 	var response = { returnValue: true, message: '' };
-	var url      = globals.WS_MULTI_URL + "/Giornaliera/RiceviTabelleGenerali";
-	
+	var url      = globals.WS_LU + "/Lu32/RiceviTabelleGeneraliAsync";
+	// add new operation info for future updates
+	var operation = scopes.operation.create(params['idditta'],params['idgruppoinstallazione'],params['periodo'],globals.OpType.RTG);
+	if(operation == null || operation.operationId == null)
+	{
+		globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
+		response.returnValue = false;
+		response.message = 'Errore durante la preparazione dell\'operazione lunga';
+		return response;
+	}
+	params.operationid = operation.operationId;
+	params.operationhash = operation.operationHash;
 	globals.addJsonWebServiceJob(url,
 		                         params,
 								 null,
@@ -661,14 +723,23 @@ function importaDatiDittaDipendenti(params, callback)
 }
 
 /**
- * TODO generated, please specify type and doc for the params
  * @param params
  *
  * @properties={typeid:24,uuid:"03B5C6D2-2F4A-46A6-9F6A-4ED153DD6B51"}
  */
 function importaDatiDitta(params)
 {
-	var url = globals.WS_MULTI_URL + "/Giornaliera/RiceviTabelleDitta";
+	// add new operation info for future updates
+	var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.RTDD);
+	if(operation == null || operation.operationId == null)
+	{
+		globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
+		return;
+	}
+	params.operationid = operation.operationId;
+	params.operationhash = operation.operationHash;
+	
+	var url = globals.WS_LU + "/Lu32/RiceviTabelleDittaAsync";
 	globals.addJsonWebServiceJob(url, params);
 }
 
@@ -692,7 +763,7 @@ function importaDatiSync(params)
 function importaDatiGeneraliSync(params)
 {
 	var prints = datasources.db.ma_log.operationfile.getFoundSet();
-	var url    = globals.WS_URL + "/Giornaliera/RiceviTabelleGeneraliSync";
+	var url    = globals.WS_LU + "/Lu32/RiceviTabelleGeneraliSync";
 	
 	var response = globals.getWebServiceResponse(url, params);
 	if(!response)
@@ -720,7 +791,7 @@ function importaDatiGeneraliSync(params)
 function importaDatiDittaDipendentiSync(params)
 {
 	var prints = datasources.db.ma_log.operationfile.getFoundSet();
-	var url    = globals.WS_MULTI_URL + "/Giornaliera/RiceviTabelleDittaDipendentiSync";
+	var url    = globals.WS_LU + "/Lu32/RiceviTabelleDittaSync";
 
 	var response = globals.getWebServiceResponse(url, params);
 	if(!response)
@@ -754,16 +825,16 @@ function RiepilogoFestivita(idditta, idlavoratore, periodo, includiAccantonate)
 	
 	var params = { idditta: idditta, periodo: periodo };
 	
-	var url = globals.WS_URL + '/Trattamenti/RiepilogoFestivitaDittaPeriodo';
+	var url = globals.WS_CALENDAR + '/Holiday32/RiepilogoFestivitaDittaPeriodo';
 	var response = globals.getWebServiceResponse(url, params);
 	
 	/** @type {Array<{ data: Date, tipo: String }>} */
 	var festivita = [];
 	
-	if(response.returnValue)
+	if(response.ReturnValue)
 	{
 		/** @type {Array}*/
-		var riepilogo = response['riepilogoFestivita'];
+		var riepilogo = response.ReturnValue;
 		if(!includiAccantonate)
 			riepilogo = riepilogo.filter(function(_){ return _[1] == false; });
 		
@@ -871,15 +942,14 @@ function ElencoFestivita(idditta, periodo)
 		gruppolavoratori : [],
 		idgruppoinstallazione : gruppoInstallazione
 		}
-	var url    = globals.WS_URL + "/Trattamenti/ElencoFestivita";
+	var url    = globals.WS_CALENDAR + "/Holiday32/ElencoFestivita";
 
-	/** @type {{ returnValue: Boolean, festivita: Array<Array> }} */
 	var response = globals.getWebServiceResponse(url, _pars);
-	if(!response || !response.returnValue)
+	if(!response || !response.ReturnValue)
 		throw new Error('Errore durante la richiesta al server. Contattare lo studio');
 
 	if(response)
-		return response.festivita;
+		return response.ReturnValue;
 	
 	return [];
 }
@@ -1101,15 +1171,14 @@ function cancellaChiusuraDipPerOperazione(_arrDip,_idDitta,_periodo)
 	    params.iddipendenti = -1;
 	    params.periodo = _periodo ? _periodo : globals.getPeriodo();
 		params.tipoconnessione = globals.getTipoConnessione();
-	var url = globals.WS_URL + "/Trattamenti/CancellaChiusuraDip";
+	var url = globals.WS_CALENDAR + "/Calendar32/EliminaRegistrazione";
 		
 	for (var i=0; i<_length; i++)
 	{	
 		params.iddipendenti = [_arrDip[i]];		
 		var response = globals.getWebServiceResponse(url,params);
-		if(response['returnValue'] === false)
-			return false;
-		
+		if(response.ReturnValue === false)
+			return false;		
 	}
 	return true;
 }
@@ -1124,20 +1193,19 @@ function cancellaChiusuraDipPerOperazione(_arrDip,_idDitta,_periodo)
  */
 function eliminaRegistrazione(arrLavoratori,periodo)
 {
-	var params = globals.inizializzaParametriInvioGiornaliera(globals.getDitta(arrLavoratori[0]),
-		                                                      arrLavoratori,
-															  periodo,
-															  globals.getGruppoInstallazioneLavoratore(arrLavoratori[0])
-															  ,""
-															  ,globals.TipoConnessione.CLIENTE);
+	var params = globals.inizializzaParametriRegistrazione(globals.getDitta(arrLavoratori[0]),
+		                                                   arrLavoratori,
+														   periodo,
+														   globals.getGruppoInstallazioneLavoratore(arrLavoratori[0]),
+														   globals.TipoConnessione.CLIENTE);
 	
-	var url = globals.WS_URL + "/Giornaliera/EliminaRegistrazione";
+	var url = globals.WS_CALENDAR + "/Calendar32/EliminaRegistrazione";
 	
 	var response = globals.getWebServiceResponse(url,params);
-	if(response['returnValue'] === false)
-		globals.ma_utl_showErrorDialog(response['message']);
+	if(response.ReturnValue === false)
+		globals.ma_utl_showErrorDialog(response.Message);
 	
-	return response['returnValue'];
+	return response.ReturnValue;
 }
 
 /**
@@ -1149,7 +1217,7 @@ function eliminaRegistrazione(arrLavoratori,periodo)
  * @param {Number} gruppoinst
  * @param {String} gruppolav
  *
- * @return Object
+ * @return {{ReturnValue: Object, StatusCode: Number, Message: String}}
  * 
  * @properties={typeid:24,uuid:"F2BBA95F-2E89-4786-BB18-92E5180F2473"}
  */
@@ -1157,13 +1225,11 @@ function esisteGiornalieraDaImportare(idDitta,periodo,gruppoinst,gruppolav)
 {
 	try
 	{
-		var paramsFtp = globals.inizializzaParametriInvioGiornaliera(idDitta,
-															        [],
-															        periodo,
-															        gruppoinst || globals.getGruppoInstallazioneDitta(idDitta),
-															        gruppolav || '',
-															        globals.TipoConnessione.CLIENTE);
-		var ctrlUrl = globals.WS_LU_URL + "/Giornaliera/ControlloGioInviateSede";
+		var paramsFtp = globals.inizializzaParametriFtpGiornaliera(idDitta,
+															       gruppoinst || globals.getGruppoInstallazioneDitta(idDitta),
+																   periodo
+																   );
+		var ctrlUrl = globals.WS_LU + "/Ftp32/ControlloGioInviateSede";
 		var ctrlRes = globals.getWebServiceResponse(ctrlUrl,paramsFtp);
 		
 		return ctrlRes;
@@ -1198,11 +1264,11 @@ function esisteGiornalieraInviata(idDitta,periodo,gruppoinst,gruppolav)
 																   gruppoinst || globals.getGruppoInstallazioneDitta(idDitta),
 																   gruppolav || '',
 																   globals.TipoConnessione.CLIENTE);
-		var ctrlUrl = globals.WS_LU_URL + "/Giornaliera/ControlloGioInviate";
+		var ctrlUrl = globals.WS_LU + "/Ftp32/ControlloGioInviate";
 		var ctrlRes = globals.getWebServiceResponse(ctrlUrl,_params);
 		
 		if(ctrlRes)
-		   return ctrlRes['returnValue'];
+		   return ctrlRes.ReturnValue;
 	}
 	catch (ex)
 	{
@@ -1308,9 +1374,9 @@ function eliminazioneDipendente(idLavoratore)
 	          giorno : new Date().getDate(),
 	          iddipendenti : [idLavoratore]};
 
-    var url = globals.WS_URL + "/Giornaliera/EliminazioneDipendente";
+    var url = globals.WS_CALENDAR + "/Calendar32/EliminaDipendente";
     var response = globals.getWebServiceResponse(url,params);
-    if(response && response['returnValue'])
+    if(response && response.ReturnValue)
     	globals.ma_utl_showInfoDialog('Dipendente eliminato correttamente.','Eliminazione dipendente');
     else
         globals.ma_utl_showInfoDialog('Dipendente non eliminato, verificare.','Eliminazione dipendente');

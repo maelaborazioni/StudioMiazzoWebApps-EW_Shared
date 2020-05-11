@@ -784,19 +784,28 @@ function ma_ew_getDatiGiornaliera(idlavoratore, giorno)
  */
 function getFestivitaDipendente(idDitta, idDipendente, periodo)
 {
-	var url = WS_URL + '/Giornaliera/FestivitaDipendente';
-	var params = { idditta: idDitta, iddipendenti: [idDipendente], periodo: periodo,tipoconnessione : globals._tipoConnessione };
+	var url = WS_CALENDAR + '/Holiday32/FestivitaDipendente';
+	var params = { 
+		userid                  : security.getUserName(), 
+		clientid                : security.getClientID(),
+		server                  : globals.server_db_name,
+		databasecliente         : globals.customer_dbserver_name,
+		idditta: idDitta,
+		iddipendenti: [idDipendente],
+		periodo: periodo,
+		tipoconnessione : globals._tipoConnessione,
+		giorniselezionati : []
+		};
 	var response = getWebServiceResponse(url, params);
 	
-	if(response && response['returnValue'] === true)
+	if(response && response.ReturnValue)
 	{
-		return response['festivita'];
+		/**@type {Array<Number>} */
+		var festivita = response.ReturnValue;
+		return festivita;
 	}
-	else
-	{
-		globals.ma_utl_showErrorDialog(response.message || 'Errore durante il calcolo delle festività', 'Festività dipendente');
-		return null;
-	}
+    globals.ma_utl_showErrorDialog(response.message || 'Errore durante il calcolo delle festività', 'Festività dipendente');
+	return null;
 }
 
 /**
@@ -825,74 +834,48 @@ var TipoAttivazione =
 function inizializzaParametriAttivaMese(_idditta, _periodo, _gruppoinst, _gruppolav,_tipoconnessione,_idlavcurr)
 {
 	var params = {
-		user_id                 : security.getUserName(), 
-		client_id               : security.getClientID(),
+		userid                  : security.getUserName(), 
+		clientid                : security.getClientID(),
+		server                  : globals.server_db_name,
+		databasecliente         : globals.customer_dbserver_name,
 		idditta					: _idditta,
 		periodo					: _periodo, 
-		gruppoinstallazione	    : _gruppoinst || -1,
-		idgruppoinstallazione	: _gruppoinst || -1, // TODO da eliminare
-		codgruppogestione		: _gruppolav,
-		iddipendenti			: _idlavcurr ? [_idlavcurr] : []
+		idgruppoinstallazione	: _gruppoinst || -1,
+		codgruppogestione		: _gruppolav
 	};
 	
-	if(_tipoConnessione)
-		params.tipoconnessione = _tipoConnessione;
+	_tipoConnessione ? 
+		params.tipoconnessione = _tipoConnessione : globals.TipoConnessione.CLIENTE;
 	
 	return params;
 }
 
 /**
- * @param params
- * @param [nonInteractive]
- * 
- * 
- * @return {Number}
- * 		<ul>
- *		<li>0	se si può procedere direttamente al calcolo della giornaliera,</li>
- * 		<li>1	se è necessario attivare silenziosamente prima del calcolo della giornaliera,</li>
- * 		<li>2	se è necessario presentare l'elenco delle festività,</li>
- * 	   	<li>-1	errore</li>
- * 		</ul>
- * 
- * @properties={typeid:24,uuid:"788B1903-F259-4611-AFB7-BF01DF6DD8BB"}
- */
-function preAttivaMese(params, nonInteractive)
+* @param {Number} _idditta
+* @param {Number} _periodo
+* @param {Array<Number>} _iddipendenti
+* @param {String} _tipoGiornaliera
+* @param {Array<Number>} _giorniSel
+* @param {Number} _giornata
+* 
+* @properties={typeid:24,uuid:"9695D3DC-E61B-4573-B11C-8804F4C189C6"}
+*/
+function inizializzaParametriCopiaGiornata(_idditta, _periodo, _iddipendenti, _tipoGiornaliera, _giorniSel, _giornata)
 {
-	var response = isMeseDaAttivare(params);
-    if (response && response.returnValue && response['returnValue'] === true) 
-    {
-	   if(response.activate && response['activate'] === true)
-	   {				   
-	   	 var answer = nonInteractive == true || globals.ma_utl_showYesNoQuestion('Attivare il mese in giornaliera?', 'Mese non ancora attivato');
-		 if (answer)
-			 return globals.TipoAttivazione.AUTORIZZATA; // attivazione autorizzata 
-		 else
-			 return globals.TipoAttivazione.NEGATA; // attivazione negata
-	   }
-	   else
-	   	   return globals.TipoAttivazione.NON_NECESSARIA;  // attivazione non necessaria
-    }
-    else if(response)
-    {
-    	globals.ma_utl_showErrorDialog(response['message'], 'Errore');
-    	return -1;
-    }
-    return -1;
-}
-
-/**
- * Ritorna true se il mese è ancora da attivare, false altrimenti
- * 
- * @param {Object} params
- * 
- * @return Object
- * 
- * @properties={typeid:24,uuid:"A12D446D-89C3-46D4-9396-B530AC2A2EFE"}
- */
-function isMeseDaAttivare(params)
-{		
-	var url = WS_URL + "/Trattamenti/DittaDaAttivare";	
-	return getWebServiceResponse(url, params);		
+	var params = {
+		userid                  : security.getUserName(), 
+		clientid                : security.getClientID(),
+		server                  : globals.server_db_name,
+		databasecliente         : globals.customer_dbserver_name,
+		idditta					: _idditta,
+		periodo					: _periodo, 
+		iddipendenti	        : _iddipendenti,
+		tipogiornaliera		    : _tipoGiornaliera,
+		giorniselezionati       : _giorniSel,
+		giornata                : _giornata
+	};
+	
+	return params;
 }
 
 /**
@@ -905,20 +888,20 @@ function isMeseDaAttivare(params)
  */
 function getElencoDipendentiSenzaRegoleAssociateWS(params)
 {
-	var url = WS_URL + "/Trattamenti/ElencoDipendentiSenzaRegoleAssociate";
+    /** @type {Array} */	
+	var dipArray = null;
+	var url = WS_CALENDAR + "/Calendar32/ControlloRegoleEntrata";
 	var _responseObj = getWebServiceResponse(url, params);
 	
-	if(_responseObj != null)
+	if(_responseObj)
 	{
-		if(_responseObj['returnValue'] == true && _responseObj['dipArray'] != null)					
-			return _responseObj['dipArray'];
-		else
-			return null;
+		if(_responseObj.StatusCode == HTTPStatusCode.OK && _responseObj.ReturnValue != null)					
+		   dipArray = _responseObj.ReturnValue;
 	}
 	else				
 		globals.ma_utl_showErrorDialog('Il server non risponde, si prega di riprovare','Errore di comunicazione');
 	
-	return null;
+	return dipArray;
 }
 
 /**
@@ -1008,6 +991,7 @@ function getElencoDipendentiSenzaRegoleAssociateGruppoDitte(params)
    var aSqlFrom = "";
    var aSql = "";
    var arrPars = [];
+   /** @type {Array} */
    var arrDitte = params['arrDitte'];
    
    for(var i = 1; i <= arrDitte.length; i++ )
@@ -1064,13 +1048,12 @@ function getElencoDipendentiSenzaRegoleAssociateGruppoDitte(params)
 /**
  * Controlla se vi sono dipendenti da attivare per il periodo selezionato
  * 
- * @return {Object}
- *
  * @properties={typeid:24,uuid:"0A238200-98E9-408C-BB74-E59C29203E45"}
  */
 function checkDipendentiDaAttivare(params)
 {
-	var url = globals.WS_DOTNET_CASE == globals.WS_DOTNET.CORE ? globals.WS_URL + "/Trattamenti/DipendentiDaAttivare" : globals.WS_URL + "/Giornaliera/DipendentiDaAttivare";
+	var url = globals.WS_CALENDAR + "/Calendar32/DipendentiDaAttivare";	
+	/** @type {{ReturnValue: Object, StatusCode: Number, Message: String}} */
 	var _responseObj = getWebServiceResponse(url, params);
 	return _responseObj;
 }
@@ -1085,16 +1068,22 @@ function checkDipendentiDaAttivare(params)
 function attivazioneMese(params)
 {	
 	setPeriodoAttivo(params.periodo);
-    
-	var url = WS_MULTI_URL + "/Trattamenti/AttivazioneMese";
+	var url = WS_CALENDAR + "/Calendar32/AttivazioneMese";
     if(params.sync)
     {
     	url += 'Sync';
     	return getWebServiceResponse(url,params);
     }
-    
-	addJsonWebServiceJob(url,params);
-	return { returnValue: true, message: '' };
+ // add new operation info for future updates
+	var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.AM);
+	if(operation == null || operation.operationId == null)
+	{
+		globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
+		return { StatusCode: globals.HTTPStatusCode.INTERNAL_ERROR , ReturnValue : false, Message : 'Errore durante la preparazione dell\'operazione lunga.'}; 
+	}
+	params.operationid = operation.operationId;
+	params.operationhash = operation.operationHash;
+	return addJsonWebServiceJob(url + 'Async',params);
 }
 
 /**
@@ -1107,7 +1096,7 @@ function attivazioneMese(params)
 function attivazioneMeseSync(params)
 {	
 	setPeriodoAttivo(params.periodo);
-	var url = WS_URL + "/Trattamenti/AttivazioneMese";
+	var url = WS_CALENDAR + "/Calendar32/AttivazioneMeseSync";
 	return getWebServiceResponse(url,params);
 }
 
@@ -1269,34 +1258,19 @@ function getIdTabAttivita(codAttivita)
  * @param {String} _gruppolav
  * @param {Number} _tipoconnessione
  * 
- * @return {{
- * 				user_id : String,
- * 				client_id : String,
- *				idditta : Number,
- *              codiceditta : Number,
- *				iddipendenti : Array,
- *				periodo : Number,
- *				gruppoinstallazione : Number,
- *				idgruppoinstallazione : Number,
- *			    codgruppogestione : String,
- *				tipogiornaliera : String,
- *				tipoconnessione : Number,
- *				tracciatoore : Number
- *		   }}
- *
  * @properties={typeid:24,uuid:"2220162A-3D92-47C7-B112-0205F0B5AB31"}
  */
 function inizializzaParametriInvioGiornaliera(_idditta, _iddipendenti, _periodo, _gruppoinst, _gruppolav,_tipoconnessione)
 {
     return {
-    	user_id                 : security.getUserName(), 
-		client_id               : security.getClientID(),
+    	userid                  : security.getUserName(), 
+		clientid                : security.getClientID(),
+		server                  : globals.server_db_name,
+		databasecliente         : globals.customer_dbserver_name,
 		idditta                 : _idditta,
-        codiceditta             : globals.getCodDitta(_idditta),
-		iddipendenti            : _iddipendenti,
+        iddipendenti            : _iddipendenti,
 		periodo                 : _periodo,
-		gruppoinstallazione	    : _gruppoinst,
-		idgruppoinstallazione   : _gruppoinst, // TODO da eliminare
+		idgruppoinstallazione   : _gruppoinst, 
 	    codgruppogestione       : _gruppolav,
 		tipogiornaliera         : globals.TipoGiornaliera.NORMALE,
 		tipoconnessione         : _tipoconnessione,
@@ -1305,31 +1279,191 @@ function inizializzaParametriInvioGiornaliera(_idditta, _iddipendenti, _periodo,
 	};
 }
 
-/** 
+/**
+ * Inizializza i parametri per la funzione di registrazione/deregistrazione chiusura di un lavoratore
+ * 
  * @param {Number} _idditta
+ * @param {Array}  _iddipendenti
  * @param {Number} _periodo
+ * @param {Number} _gruppoinst
+ * @param {Number} [_tipoconnessione]
+ * 
+ * @properties={typeid:24,uuid:"7C6C8972-1090-4C0A-A555-55AD62D3866D"}
+ */
+function inizializzaParametriRegistrazione(_idditta, _iddipendenti, _periodo, _gruppoinst, _tipoconnessione)
+{
+    return {
+    	userid                  : security.getUserName(), 
+		clientid                : security.getClientID(),
+		server                  : globals.server_db_name,
+		databasecliente         : globals.customer_dbserver_name,
+		idditta                 : _idditta,
+        iddipendenti            : _iddipendenti,
+		periodo                 : _periodo,
+		idgruppoinstallazione   : _gruppoinst, 
+		tipoconnessione         : _tipoconnessione ? _tipoconnessione : globals.TipoConnessione.CLIENTE
+	};
+}
+
+
+
+/**
+ * @param _idditta
+ * @param _iddipendenti
+ * @param _periodo
+ * @param _gruppoinst
+ * @param _gruppolav
+ * @param _tipoconnessione
+ *
+ * @properties={typeid:24,uuid:"246BD953-280F-409A-A1D7-941C91B23A3D"}
+ */
+function inizializzaParametriAcquisizioneGiornaliera(_idditta, _iddipendenti, _periodo, _gruppoinst, _gruppolav,_tipoconnessione)
+{
+	return {
+    	userid                  : security.getUserName(), 
+		clientid                : security.getClientID(),
+		server                  : globals.server_db_name,
+		databasecliente         : globals.customer_dbserver_name,
+		idditta                 : _idditta,
+        singolodipendente       : _iddipendenti,
+		periodo                 : _periodo,
+		idgruppoinstallazione   : _gruppoinst,
+	    codgruppogestione       : _gruppolav,
+		tipogiornaliera         : globals.TipoGiornaliera.NORMALE,
+		tipoconnessione         : _tipoconnessione
+		};
+}
+
+/**
+ * TODO generated, please specify type and doc for the params
+ * @param _idditta
+ * @param _gruppoinst
+ *
+ * @properties={typeid:24,uuid:"AB75F7BB-34E1-48B8-89C5-5382EE1D2F23"}
+ */
+function inizializzaParametriFtp(_idditta,_gruppoinst)
+{
+	return {
+    	userid                  : security.getUserName(), 
+		clientid                : security.getClientID(),
+		server                  : globals.server_db_name,
+		databasecliente         : globals.customer_dbserver_name,
+		idditta                 : _idditta,
+        idgruppoinstallazione   : _gruppoinst,
+		codiceditta             : getCodDitta(_idditta)
+	    };
+}
+
+/**
+ * @param _idditta
+ * @param _gruppoinst
+ * @param _periodo
+ *
+ * @properties={typeid:24,uuid:"F6D9721D-4CE8-4416-A07D-23453B187090"}
+ */
+function inizializzaParametriFtpGiornaliera(_idditta,_gruppoinst, _periodo)
+{
+	return {
+    	userid                  : security.getUserName(), 
+		clientid                : security.getClientID(),
+		server                  : globals.server_db_name,
+		databasecliente         : globals.customer_dbserver_name,
+		idditta                 : _idditta,
+		periodo                 : _periodo,
+        idgruppoinstallazione   : _gruppoinst,
+		codiceditta             : getCodDitta(_idditta)
+	    };
+}
+
+/**
+ * TODO generated, please specify type and doc for the params
+ * @param _idditta
+ * @param _periodo
+ * @param _iddittamensa
+ *
+ * @properties={typeid:24,uuid:"75BD32A8-1F18-43DE-8D6B-CE3562923C69"}
+ */
+function inizializzaParametriRapportoMensa(_idditta, _periodo, _iddittamensa)
+{
+	return {
+    	userid                  : security.getUserName(), 
+		clientid                : security.getClientID(),
+		server                  : globals.server_db_name,
+		databasecliente         : globals.customer_dbserver_name,
+		idditta                 : _idditta,
+		periodo                 : _periodo,
+		iddittamensa            : _iddittamensa
+	}
+}
+
+
+/** 
  * @param {String} _tipoGiornaliera
  * @param {Number} _tipoConn
- * @param {Array} _giornisel
- * @param {Array} _iddip
- * @param {Number} [_idEvento]
+ * @param {Array<Number>} _iddip
  * 
  * @properties={typeid:24,uuid:"21570A73-1AF7-4AB6-882C-7ADDFD810565"}
  */
-function inizializzaParametriFiltroEvento(_idditta, _periodo, _tipoGiornaliera, _tipoConn,
-								   _giornisel, _iddip, _idEvento){
+function inizializzaParametriFiltroEvento( _tipoGiornaliera, _tipoConn, _iddip){
 	
 	return {
-		user_id             : security.getUserName(), 
-		client_id           : security.getClientID(),
-		idditta				: _idditta,
-		periodo 			: _periodo,
-		tipooperazione		: 1,
+		userid              : security.getUserName(), 
+		clientid            : security.getClientID(),
+		server              : globals.server_db_name,
+		databasecliente     : globals.customer_dbserver_name,
 		tipogiornaliera		: _tipoGiornaliera,
 		tipoconnessione		: _tipoConn,
-		idevento			: _idEvento,
+		iddipendenti		: _iddip
+	};
+}
+
+/** 
+ * @param {String} _tipoGiornaliera
+ * @param {Number} _tipoConn
+ * @param {Array<Number>} _iddip
+ * @param {Number} _idditta
+ * @param {Number} _idtabcategoriasw
+ * 
+ * @properties={typeid:24,uuid:"82752A53-C6DA-4A97-9071-95F612939B1D"}
+ */
+function inizializzaParametriFiltroEventiModulo( _tipoGiornaliera, _tipoConn, _iddip, _idditta, _idtabcategoriasw){
+	
+	return {
+		userid              : security.getUserName(), 
+		clientid            : security.getClientID(),
+		server              : globals.server_db_name,
+		databasecliente     : globals.customer_dbserver_name,
+		tipogiornaliera		: _tipoGiornaliera,
+		tipoconnessione		: _tipoConn,
 		iddipendenti		: _iddip,
-		giorniselezionati	: _giornisel
+		idditta             : _idditta,
+		idtabcategoriasw    : _idtabcategoriasw ? _idtabcategoriasw : -1
+	};
+}
+
+/** 
+ * @param {String} _tipoGiornaliera
+ * @param {Number} _tipoConn
+ * @param {Array} _iddip
+ * @param {Array} _giorniselezionati
+ * @param {Number} _periodo
+ * @param {Number} _idevento
+ * 
+ * @properties={typeid:24,uuid:"188F35B9-388D-4C8B-8616-2A497B310944"}
+ */
+function inizializzaParametriFiltroProprietaEvento( _tipoGiornaliera, _tipoConn, _iddip, _giorniselezionati, _periodo, _idevento){
+	
+	return {
+		userid              : security.getUserName(), 
+		clientid            : security.getClientID(),
+		server              : globals.server_db_name,
+		databasecliente     : globals.customer_dbserver_name,
+		tipogiornaliera		: _tipoGiornaliera,
+		tipoconnessione		: _tipoConn,
+		iddipendenti		: _iddip,
+		giorniselezionati   : _giorniselezionati,
+		periodo             : _periodo,
+		idevento            : _idevento  
 	};
 }
 
@@ -1531,14 +1665,17 @@ function ottieniInformazioniFasciaGiorno(idLav,giorno)
     	   idFasciaGiorno = dsFascia.getValue(1,6);
     }
     else
-    {
+    {  	
     	// ricerca fascia teorica
-    	var sqlFasciaTeo = "SELECT dbo.F_Lav_IDFasciaTeorica(?,?)";
-		var arrFasciaTeo = [idLav,globals.dateFormat(giorno,globals.ISO_DATEFORMAT)];
+    	var sqlFasciaTeo = "SELECT idFasciaOraria \
+    						FROM dbo.F_Lav_RegolaPeriodo(?, ?, ?) \
+    						AS Regole \
+							LEFT OUTER JOIN E2RegoleFasce RF ON Regole.idRegole = RF.idRegole AND Regole.Riga = RF.Riga \
+							LEFT OUTER JOIN E2FO_FasceOrarie FO ON RF.idFasceOrarie = FO.idFasciaOraria";
+		var arrFasciaTeo = [idLav,globals.dateFormat(giorno,globals.ISO_DATEFORMAT),globals.dateFormat(giorno,globals.ISO_DATEFORMAT)];
 		var dsFasciaTeo = databaseManager.getDataSetByQuery(globals.Server.MA_PRESENZE,sqlFasciaTeo,arrFasciaTeo,-1);
 	
-		idFasciaGiorno = dsFasciaTeo.getValue(1,1);
-		
+		idFasciaGiorno = dsFasciaTeo.getValue(1,1);		
     }
     
     
@@ -2114,18 +2251,45 @@ function getSiglaGiorno(giorno)
  * @param {Number} _tipoconnessione
  * @param {Array} _giornisel
  * @param {Array} _idDipsel
+ * 
+ * @properties={typeid:24,uuid:"0ABBC626-29E6-4BB2-8D12-609C081A92A1"}
+ */
+function inizializzaParametriCompila(_idditta, _periodo, _tipoGiornaliera, _tipoconnessione, _giornisel, _idDipsel)
+{
+	return {
+		userid              : security.getUserName(), 
+		clientid            : security.getClientID(),
+		server              : globals.server_db_name,
+		databasecliente     : globals.customer_dbserver_name,
+		idditta				: _idditta,
+		periodo				: _periodo,
+		tipogiornaliera		: _tipoGiornaliera,
+		tipoconnessione		: _tipoConnessione,
+		giorniselezionati	: _giornisel,
+		iddipendenti		: _idDipsel
+	};
+}
+
+/**
+ * 
+ * @param {Number} _idditta
+ * @param {Number} _periodo
+ * @param {Number} _tipoconnessione
+ * @param {Array} _giornisel
+ * @param {Array} _idDipsel
  * @param {Boolean} [_soloNonConteggiati]
  * 
  * @properties={typeid:24,uuid:"3F30F2D2-7287-4AB2-99D8-F9380ACE69B0"}
  */
-function inizializzaParametriCompilaConteggio(_idditta, _periodo, _tipoGiornaliera, _tipoconnessione, _giornisel, _idDipsel,_soloNonConteggiati)
+function inizializzaParametriConteggio(_idditta, _periodo, _tipoconnessione, _giornisel, _idDipsel,_soloNonConteggiati)
 {
 	return {
-		user_id             : security.getUserName(), 
-		client_id           : security.getClientID(),
+		userid              : security.getUserName(), 
+		clientid            : security.getClientID(),
+		server              : globals.server_db_name,
+		databasecliente     : globals.customer_dbserver_name,
 		idditta				: _idditta,
 		periodo				: _periodo,
-		tipogiornaliera		: _tipoGiornaliera,
 		tipoconnessione		: _tipoConnessione,
 		giorniselezionati	: _giornisel,
 		iddipendenti		: _idDipsel,
@@ -2135,9 +2299,8 @@ function inizializzaParametriCompilaConteggio(_idditta, _periodo, _tipoGiornalie
 
 /**
  * @param {Number} _idditta
- * @param {Array<Number>} _giornisel
  * @param {Number} _periodo
- * @param {Number} _tipoOperazione
+ * @param {Array<Number>} _giornisel
  * @param {String} _tipoGiornaliera
  * @param {Number} _tipoconnessione
  * @param {Array<Number>} _idDipsel
@@ -2149,20 +2312,20 @@ function inizializzaParametriCompilaConteggio(_idditta, _periodo, _tipoGiornalie
  * @param {String} _codpropmodificato
  * @param {Number} _coperturaOrarioTeorico
  * @param {Boolean} [_ricalcolaProprieta]
- * @param {Number} [_idTabSW]
  * 
  * @properties={typeid:24,uuid:"1B7FC4FD-1F71-481D-A269-8F103CE6668C"}
  */
-function inizializzaParametriEvento(_idditta, _periodo, _tipoOperazione, _giornisel, _tipoGiornaliera, _tipoconnessione,
+function inizializzaParametriEvento(_idditta, _periodo, _giornisel, _tipoGiornaliera, _tipoconnessione,
 									_idDipsel, _idevento, _codpropevento, _oreevento, _importoevento, _ideventomodificato,
-									_codpropmodificato, _coperturaOrarioTeorico, _ricalcolaProprieta,_idTabSW){
+									_codpropmodificato, _coperturaOrarioTeorico, _ricalcolaProprieta){
 	
    return {										
-	   user_id                  : security.getUserName(), 
-	   client_id                : security.getClientID(),
+	   userid                   : security.getUserName(), 
+	   clientid                 : security.getClientID(),
+	   server                   : globals.server_db_name,
+	   databasecliente          : globals.customer_dbserver_name,
 	   idditta				    : _idditta,
 	   periodo				    : _periodo,
-	   tipooperazione		    : _tipoOperazione,
 	   tipogiornaliera		    : _tipoGiornaliera,
 	   tipoconnessione		    : _tipoConnessione,
 	   giorniselezionati	    : _giornisel,
@@ -2174,9 +2337,7 @@ function inizializzaParametriEvento(_idditta, _periodo, _tipoOperazione, _giorni
 	   ideventomod			    : _ideventomodificato != null ? _ideventomodificato : -1,
 	   codproprietamod			: _codpropmodificato,
 	   coperturaorarioteorico	: _coperturaOrarioTeorico,
-	   ricalcolaproprieta       : _ricalcolaProprieta != null ? _ricalcolaProprieta : false,
-	   idtabcategoriasw         : _idTabSW != null ? _idTabSW : -1		   
-
+	   ricalcolaproprieta       : _ricalcolaProprieta != null ? _ricalcolaProprieta : false
    };
 }
 
@@ -2189,9 +2350,12 @@ function inizializzaParametriEvento(_idditta, _periodo, _tipoOperazione, _giorni
  */
 function salvaEvento(_evParams)
 {	
-	var url = WS_URL + "/Eventi/Salva";
+	var url = WS_EVENT + "/Event32/SalvaEvento";
 	var responseObj = getWebServiceResponse(url,_evParams);
-	return responseObj['returnValue'];
+	if(responseObj && responseObj.StatusCode == HTTPStatusCode.OK)
+	   return new Boolean(responseObj.ReturnValue);
+	
+	return false;
 }
 
 /**
@@ -2203,27 +2367,26 @@ function salvaEvento(_evParams)
  * @param {Number} [gg]
  * @param {String} [tipoGiorn]
  *
+ * @return 	{{ReturnValue: Object, StatusCode: Number, Message: String}} 
+ * 
  * @properties={typeid:24,uuid:"42ED854C-049E-49A7-BBFB-F04EB1D4C6A3"}
  */
 function getProprietaSelezionabili(idEvento,idLav,periodo,gg,tipoGiorn)
 {
-	var url = globals.WS_URL + "/Eventi/FiltraProprieta";
+	var url = globals.WS_EVENT + "/Event32/FiltraProprieta";
 	var giorno = gg ? gg : forms['giorn_list_temp'].foundset.getSelectedIndex() - globals.offsetGg;
 	var iddip = idLav ? idLav : forms['giorn_header'].idlavoratore;
 		
-	var params = inizializzaParametriFiltroEvento(
-					 idLav ? globals.getDitta(idLav) : forms['giorn_header'].idditta
-					,periodo ? periodo : globals.getPeriodo()
-					,tipoGiorn ? tipoGiorn : globals.TipoGiornaliera.NORMALE
+	var params = inizializzaParametriFiltroProprietaEvento(
+					tipoGiorn ? tipoGiorn : globals.TipoGiornaliera.NORMALE
 					,globals._tipoConnessione
-					,[giorno]
 					,[iddip]
+					,[giorno]
+					,periodo ? periodo : globals.getPeriodo()
 					,idEvento
 					);
 	
-	var response = globals.getWebServiceResponse(url, params);
-	
-	return response['proprieta'];
+	return globals.getWebServiceResponse(url, params);	
 }
 
 /**
@@ -2352,24 +2515,17 @@ function FiltraEventiSelezionabili(idLav,periodo,tipoGiorn)
 {	
 	_arrIdEvSelezionabili = [];
 	
-	var bReturn = false
-	var url = globals.WS_URL + "/Eventi/FiltraEventi"
-	var params = globals.inizializzaParametriFiltroEvento(
-			 globals.getDitta(idLav)
-			,periodo
-			,tipoGiorn
-			,globals._tipoConnessione
-			,[]
-			,[idLav]
-			,-1
-			);
-	
+	var url = globals.WS_EVENT + "/Event32/FiltraEventi"
+	var params = globals.inizializzaParametriFiltroEvento(tipoGiorn
+														  ,globals.TipoConnessione.CLIENTE
+													  	  ,[idLav]
+														  );
+	/** @type {{ReturnValue: Object, StatusCode: Number, Message: String}} */
 	var _responseObj = globals.getWebServiceResponse(url, params);
-	bReturn = _responseObj['returnValue'];
-	if (bReturn === true)
+	if (_responseObj.StatusCode === HTTPStatusCode.OK)
 	{
 		/** @type {Array} */
-		var arrIdEvSelezionabili = _responseObj['eventi'];
+		var arrIdEvSelezionabili = _responseObj.ReturnValue;
 		
 		var arrIdEvNonSelezionabili = getEventiNonSelezionabiliDaUtente();
 		
@@ -2384,35 +2540,6 @@ function FiltraEventiSelezionabili(idLav,periodo,tipoGiorn)
     }	
 	else
 	  globals.ma_utl_showErrorDialog('Filtraggio eventi selezionabili non riuscito','Nessun evento selezionabile in giornaliera');
-	
-	return bReturn;
-}
-
-/**
- * @properties={typeid:24,uuid:"71AD2AB6-BD3F-4521-9B0F-1AB76D4F2527"}
- */
-function FiltraEventiSelezionabiliDittaPeriodo(idDitta,periodo)
-{
-	var url = globals.WS_URL + "/Eventi/FiltraEventiDitta"
-	
-	var params = globals.inizializzaParametriInvioGiornaliera(idDitta
-		                                                  ,[]
-		                                                  ,periodo
-														  ,globals.getGruppoInstallazioneDitta(idDitta)
-														  ,''
-														  ,globals.TipoConnessione.CLIENTE);
-	
-	var response = globals.getWebServiceResponse(url, params);
-	if (response['returnValue'] === true)
-	{
-		/** @type {Array} */
-		globals._arrIdEvSelezionabili = response['eventi'];
-		if (globals._arrIdEvSelezionabili.length > 0)
-			globals.ma_utl_showWarningDialog('Non esistono eventi selezionabili, riprovare o verificare','i18n:hr.msg.attention');
-				
-	}	
-	
-	return response['returnValue'];
 }
 
 /**
@@ -2424,9 +2551,9 @@ function FiltraEventiSelezionabiliDittaPeriodo(idDitta,periodo)
  */
 function FiltraEventiSelezionabiliModulo(idLavoratore,idTabSW)
 {	
-	var url = globals.WS_RFP_URL + "/Eventi/FiltraEventiModulo"
+	var url = globals.WS_EVENT + "/Event32/FiltraEventiModulo"
 	
-	var params = globals.inizializzaParametriEvento(
+	var params = globals.inizializzaParametriFiltroEventiModulo(
 		         globals.getDitta(idLavoratore),
 				 globals.toPeriodo(globals.TODAY.getFullYear(),globals.TODAY.getMonth() + 1),
 				 0,
@@ -2443,15 +2570,13 @@ function FiltraEventiSelezionabiliModulo(idLavoratore,idTabSW)
 				 false,
 				 false,
 				 idTabSW)
-	
+	/** {{ReturnValue: Object, StatusCode: Number, Message: String}} */
 	var _responseObj = globals.getWebServiceResponse(url, params);
-	if (_responseObj['returnValue'] === true)
+	if (_responseObj.StatusCode === HTTPStatusCode.OK)
 		/** @type {Array} */
-		globals._arrIdEvSelezionabiliRP = _responseObj['eventi'];
+		globals._arrIdEvSelezionabiliRP = _responseObj.ReturnValue;
 	else
 	    globals._arrIdEvSelezionabiliRP = [];
-	
-	return _responseObj['returnValue'];
 }
 
 /**

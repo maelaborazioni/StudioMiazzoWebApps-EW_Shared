@@ -1,37 +1,30 @@
 /**
- * 
  * @AllowToRunInFind
  *
  * @properties={typeid:24,uuid:"1541308F-1901-411D-ACFF-DB1A904C8A77"}
  */
 function confermaCertificati(params, modificato)
 {
-	var url = globals.WS_MULTI_URL + '/Storico/ConfermaCertificati';
-	if(params.sync)
+	if(!modificato)
+		return null; 
+	
+	// add new operation info for future updates
+	var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.CE);
+	if(operation == null || operation.operationId == null)
 	{
-		var    response = globals.getWebServiceResponse(url + 'Sync', params);
-		return response.returnValue;
+		globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
+		return null;
 	}
-	else
-		globals.addJsonWebServiceJob(url,
-			                         params,
-									 globals.vUpdateOperationStatusFunction);
-        
-    return true;
-}
-
-/**
- * 
- * @AllowToRunInFind
- *
- * @properties={typeid:24,uuid:"F03AF5BC-E5DF-49AC-8B9A-6ED34B98BEA3"}
- */
-function compilaGiornaliera(params)
-{
-	var url = globals.WS_MULTI_URL + '/Storico/CompilaGiornalieraSync';
-	var response = globals.getWebServiceResponse(url, params);
-
-	return response;
+	params.operationid = operation.operationId;
+	params.operationhash = operation.operationHash;
+	
+	var url = globals.WS_CERTIFICATE + '/Certificate32/ConfermaCertificati';
+	if(params.sync)
+		return globals.getWebServiceResponse(url + 'Sync', params);
+	
+	return globals.addJsonWebServiceJob(url + 'Async',
+		                         params,
+								 globals.vUpdateOperationStatusFunction);
 }
 
 /**
@@ -45,7 +38,7 @@ function compilaGiornaliera(params)
  * 
  * @properties={typeid:24,uuid:"D2672317-AE68-49AB-A0D9-82A9F76D168D"}
  */
-function GiorniCopertiDaCertificato(idlavoratore, periodo, eventoClasse)
+function giorniCopertiDaCertificato(idlavoratore, periodo, eventoClasse)
 {
 	eventoClasse = eventoClasse || -1;
 	
