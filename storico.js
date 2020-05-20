@@ -9,7 +9,7 @@ function confermaCertificati(params, modificato)
 		return null; 
 	
 	// add new operation info for future updates
-	var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.CE);
+	var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.CC);
 	if(operation == null || operation.operationId == null)
 	{
 		globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
@@ -22,7 +22,8 @@ function confermaCertificati(params, modificato)
 	if(params.sync)
 		return globals.getWebServiceResponse(url + 'Sync', params);
 	
-	return globals.addJsonWebServiceJob(url + 'Async',
+	return globals.addJsonWebServiceJob(
+								 url + 'Async',
 		                         params,
 								 globals.vUpdateOperationStatusFunction);
 }
