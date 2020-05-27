@@ -108,7 +108,7 @@ function controlliPreliminari(params, continueWithCallback, handlePrintCallback)
 	params.operationid = operation.operationId;
 	params.operationhash = operation.operationHash;	
 		
-    var url = globals.WS_CALENDAR + "/Control32/ControlliPreliminariAsync";
+    var url = globals.WS_CALENDAR + "/Control32/ControlliPreliminari";
     	
     // nel caso cliente va verificato che il flusso sia completo quindi che abbia
     // scaricato la giornaliera del mese precedente
@@ -577,8 +577,10 @@ function importaDaFtpAsync(params)
 function inizializzaParametriTracciatoMese(_idditta, _periodo, _gruppoinst, _gruppolav, _iddipendenti,_tracciatoOre)
 {
 	return {
-		user_id                 : security.getUserName(), 
-		client_id               : security.getClientID(),
+		userid                  : security.getUserName(), 
+		clientid                : security.getClientID(),
+		server                  : globals.server_db_name,
+		databasecliente         : globals.customer_dbserver_name,
 		idditta					: _idditta,
 		periodo					: _periodo,
 		idgruppoinstallazione	: _gruppoinst,
@@ -934,8 +936,12 @@ function ElencoFestivita(idditta, periodo)
 {
 	var gruppoInstallazione = globals.getGruppoInstallazioneDitta(idditta);
 	
-	var _pars = {tipoconnessione : globals.TipoConnessione.CLIENTE,
-		databasecliente : globals.customer_dbserver_name,
+	var _pars = {
+		tipoconnessione : globals.TipoConnessione.CLIENTE,
+		userid                  : security.getUserName(), 
+		clientid                : security.getClientID(),
+		server                  : globals.server_db_name,
+		databasecliente         : globals.customer_dbserver_name, 
 		periodo : periodo,
 		idditta : idditta,
 		iddipendenti : [],
