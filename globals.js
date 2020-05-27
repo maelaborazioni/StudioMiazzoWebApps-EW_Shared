@@ -2362,10 +2362,10 @@ function salvaEvento(_evParams)
  * Ottieni le proprietà selezionabili per l'evento del lavoratore nel giorno indicato
  * 
  * @param {Number} idEvento
- * @param {Number} [idLav]
- * @param {Number} [periodo]
- * @param {Number} [gg]
- * @param {String} [tipoGiorn]
+ * @param {Number} idLav
+ * @param {Number} periodo
+ * @param {Number} gg
+ * @param {String} tipoGiorn
  *
  * @return 	{{ReturnValue: Object, StatusCode: Number, Message: String}} 
  * 
@@ -2374,15 +2374,12 @@ function salvaEvento(_evParams)
 function getProprietaSelezionabili(idEvento,idLav,periodo,gg,tipoGiorn)
 {
 	var url = globals.WS_EVENT + "/Event32/FiltraProprieta";
-	var giorno = gg ? gg : forms['giorn_list_temp'].foundset.getSelectedIndex() - globals.offsetGg;
-	var iddip = idLav ? idLav : forms['giorn_header'].idlavoratore;
-		
 	var params = inizializzaParametriFiltroProprietaEvento(
-					tipoGiorn ? tipoGiorn : globals.TipoGiornaliera.NORMALE
+					tipoGiorn
 					,globals._tipoConnessione
-					,[iddip]
-					,[giorno]
-					,periodo ? periodo : globals.getPeriodo()
+					,[idLav]
+					,[gg]
+					,periodo
 					,idEvento
 					);
 	
@@ -2931,4 +2928,29 @@ function getDataUltimoScarico(idditte)
 			return null;
 	}
 	return null;
+}
+
+/**
+ * @AllowToRunInFind
+ * 
+ * Restituisce il record con la struttura che definisce il contratto richiesto
+ * 
+ * @param {Number} radiceContratto
+ * 
+ * @return {JSRecord<db:/ma_presenze/e2tabgruppicontrattuali>}
+ * 
+ * @properties={typeid:24,uuid:"54688DF3-8522-4F45-8FE3-D0C2F50C45B3"}
+ */
+function getGruppoContratto(radiceContratto)
+{
+	/** @type {JSFoundSet<db:/ma_presenze/e2tabgruppicontrattuali>}*/
+	var fs = databaseManager.getFoundSet(globals.Server.MA_PRESENZE,globals.Table.GRUPPI_CONTRATTO);
+	
+	if(fs.find())
+	{
+		fs.radicecontratto == radiceContratto;
+	    fs.search();
+	}
+	
+	return fs.getSelectedRecord();
 }
