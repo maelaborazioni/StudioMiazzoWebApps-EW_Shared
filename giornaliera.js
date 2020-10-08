@@ -108,7 +108,7 @@ function controlliPreliminari(params, continueWithCallback, handlePrintCallback)
 	params.operationid = operation.operationId;
 	params.operationhash = operation.operationHash;	
 		
-    var url = globals.WS_CALENDAR + "/Control32/ControlliPreliminari";
+    var url = globals.WS_CALENDAR + "/Control32/PreliminaryControl";
     	
     // nel caso cliente va verificato che il flusso sia completo quindi che abbia
     // scaricato la giornaliera del mese precedente
@@ -151,7 +151,7 @@ function controlliPreliminari(params, continueWithCallback, handlePrintCallback)
     		return null;
 	}
 	else
-		return globals.addJsonWebServiceJob(url,
+		return globals.addJsonWebServiceJob(url + 'Async',
 				                         params,
 										 globals.vUpdateOperationStatusFunction,
 										 null,
@@ -314,7 +314,7 @@ function chiudiMeseSelezionato(params, continueWithCallback)
  */
 function chiusuraMese(params, continueWithCallback)
 {
-	var url = globals.WS_CALENDAR + "/Consolidating32/ChiusuraMese";
+	var url = globals.WS_CALENDAR + "/Consolidating32/Consolidate";
 	if(params.sync)
 	{
 		url += 'Sync';
@@ -347,7 +347,7 @@ function chiusuraMese(params, continueWithCallback)
  */
 function inviaGiornalieraSuFtp(params)
 {
-	var ftpUrl = globals.WS_LU + "/Lu32/InviaGiornalieraSuFtp";
+	var ftpUrl = globals.WS_LU + "/CalendarLu32/SendCalendar";
 	if(params.sync)
 		return globals.getWebServiceResponse(ftpUrl + 'Sync', params);
 	
@@ -397,7 +397,7 @@ function getOrologioTimbratura(idTimbratura)
  */
 function controllaAcquisizioneCM(params)
 {
-   var url = globals.WS_CALENDAR + '/Calendar32/ControlloAcquisizioneCM';
+   var url = globals.WS_CALENDAR + '/Calendar32/ConsolidatingAcquisitionControl';
    return globals.getWebServiceResponse(url, params);	
  }
 
@@ -486,7 +486,7 @@ function controllaAcquisizioneCP(params)
 	if(globals._tipoConnessione == globals.Connessione.SEDE)
 		   return null;
 	
-	var url = globals.WS_CALENDAR + '/Calendar32/ControlloAcquisizioneCP';
+	var url = globals.WS_CALENDAR + '/Calendar32/ForeplayAcquisitionControl';
 	return globals.getWebServiceResponse(url, params);	
 }
 
@@ -529,7 +529,7 @@ function importaTracciatoDaFtp(idditta,periodo,gruppoinstallazione,gruppolavorat
  */
 function importaDaFtpSync(params)
 {
-	var ftpUrl = globals.WS_LU + "/Lu32/ImportaDaFtpSync";
+	var ftpUrl = globals.WS_LU + "/CalendarLu32/ImportCalendarSync";
 	return globals.getWebServiceResponse(ftpUrl, params);
 }
 
@@ -544,7 +544,7 @@ function importaDaFtpSync(params)
  */
 function importaDaFtpAsync(params)
 {
-	var ftpUrl = globals.WS_LU + "/Lu32/ImportaDaFtpAsync";
+	var ftpUrl = globals.WS_LU + "/CalendarLu32/ImportCalendarAsync";
 	// add new operation info for future updates
 	var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.IT);
 	if(operation == null || operation.operationId == null)
@@ -639,7 +639,7 @@ function preAttivaMese(params, nonInteractive)
  */
 function isMeseDaAttivare(params)
 {		
-	var url = globals.WS_CALENDAR + "/Calendar32/DittaDaAttivare";	
+	var url = globals.WS_CALENDAR + "/Calendar32/IsFactoryActivationNeeded";	
 	return globals.getWebServiceResponse(url, params);		
 }
 
@@ -654,7 +654,7 @@ function isMeseDaAttivare(params)
 function importaGiornaliera(params, callback)
 {
 	var response = { returnValue: true, message: '' };
-	var url      = globals.WS_LU + "/Lu32/ImportaDaFtp";
+	var url      = globals.WS_LU + "/CalendarLu32/ImportCalendar";
 	
 	if(params.sync)
 	{
@@ -697,7 +697,7 @@ function importaGiornaliera(params, callback)
 function importaDatiDittaDipendenti(params, callback)
 {
 	var response = { returnValue: true, message: '' };
-	var url      = globals.WS_LU + "/Lu32/RiceviTabelleGeneraliAsync";
+	var url      = globals.WS_LU + "/CalendarLu32/ImportGeneralDataAsync";
 	// add new operation info for future updates
 	var operation = scopes.operation.create(params['idditta'],params['idgruppoinstallazione'],params['periodo'],globals.OpType.RTG);
 	if(operation == null || operation.operationId == null)
@@ -741,7 +741,7 @@ function importaDatiDitta(params)
 	params.operationid = operation.operationId;
 	params.operationhash = operation.operationHash;
 	
-	var url = globals.WS_LU + "/Lu32/RiceviTabelleDittaAsync";
+	var url = globals.WS_LU + "/CalendarLu32/ImportFactoryTableDataAsync";
 	globals.addJsonWebServiceJob(url, params);
 }
 
@@ -765,7 +765,7 @@ function importaDatiSync(params)
 function importaDatiGeneraliSync(params)
 {
 	var prints = datasources.db.ma_log.operationfile.getFoundSet();
-	var url    = globals.WS_LU + "/Lu32/RiceviTabelleGeneraliSync";
+	var url    = globals.WS_LU + "/Lu32/ImportTableGeneralDataSync";
 	
 	var response = globals.getWebServiceResponse(url, params);
 	if(!response)
@@ -793,7 +793,7 @@ function importaDatiGeneraliSync(params)
 function importaDatiDittaDipendentiSync(params)
 {
 	var prints = datasources.db.ma_log.operationfile.getFoundSet();
-	var url    = globals.WS_LU + "/Lu32/RiceviTabelleDittaSync";
+	var url    = globals.WS_LU + "/Lu32/ImportFactoryTableDataSync";
 
 	var response = globals.getWebServiceResponse(url, params);
 	if(!response)
@@ -827,7 +827,7 @@ function RiepilogoFestivita(idditta, idlavoratore, periodo, includiAccantonate)
 	
 	var params = { idditta: idditta, periodo: periodo };
 	
-	var url = globals.WS_CALENDAR + '/Holiday32/RiepilogoFestivitaDittaPeriodo';
+	var url = globals.WS_CALENDAR + '/Holiday32/FactoryHolidays';
 	var response = globals.getWebServiceResponse(url, params);
 	
 	/** @type {Array<{ data: Date, tipo: String }>} */
@@ -948,7 +948,7 @@ function ElencoFestivita(idditta, periodo)
 		gruppolavoratori : [],
 		idgruppoinstallazione : gruppoInstallazione
 		}
-	var url    = globals.WS_CALENDAR + "/Holiday32/ElencoFestivita";
+	var url    = globals.WS_CALENDAR + "/Holiday32/List";
 
 	var response = globals.getWebServiceResponse(url, _pars);
 	if(!response || !response.ReturnValue)
@@ -1177,7 +1177,7 @@ function cancellaChiusuraDipPerOperazione(_arrDip,_idDitta,_periodo)
 	    params.iddipendenti = -1;
 	    params.periodo = _periodo ? _periodo : globals.getPeriodo();
 		params.tipoconnessione = globals.getTipoConnessione();
-	var url = globals.WS_CALENDAR + "/Calendar32/EliminaRegistrazione";
+	var url = globals.WS_CALENDAR + "/Calendar32/DeleteRegistration";
 		
 	for (var i=0; i<_length; i++)
 	{	
@@ -1205,7 +1205,7 @@ function eliminaRegistrazione(arrLavoratori,periodo)
 														   globals.getGruppoInstallazioneLavoratore(arrLavoratori[0]),
 														   globals.TipoConnessione.CLIENTE);
 	
-	var url = globals.WS_CALENDAR + "/Calendar32/EliminaRegistrazione";
+	var url = globals.WS_CALENDAR + "/Calendar32/DeleteRegistration";
 	
 	var response = globals.getWebServiceResponse(url,params);
 	if(response.ReturnValue === false)
@@ -1233,9 +1233,10 @@ function esisteGiornalieraDaImportare(idDitta,periodo,gruppoinst,gruppolav)
 	{
 		var paramsFtp = globals.inizializzaParametriFtpGiornaliera(idDitta,
 															       gruppoinst || globals.getGruppoInstallazioneDitta(idDitta),
-																   periodo
+																   periodo,
+																   true
 																   );
-		var ctrlUrl = globals.WS_LU + "/Ftp32/ControlloGioInviateSede";
+		var ctrlUrl = globals.WS_LU + "/Ftp32/VerifyCalendarData";
 		var ctrlRes = globals.getWebServiceResponse(ctrlUrl,paramsFtp);
 		
 		return ctrlRes;
@@ -1270,7 +1271,8 @@ function esisteGiornalieraInviata(idDitta,periodo,gruppoinst,gruppolav)
 																   gruppoinst || globals.getGruppoInstallazioneDitta(idDitta),
 																   gruppolav || '',
 																   globals.TipoConnessione.CLIENTE);
-		var ctrlUrl = globals.WS_LU + "/Ftp32/ControlloGioInviate";
+		_params["sede"] = false;
+		var ctrlUrl = globals.WS_LU + "/Ftp32/VerifyCalendarData";
 		var ctrlRes = globals.getWebServiceResponse(ctrlUrl,_params);
 		
 		if(ctrlRes)

@@ -18,7 +18,7 @@ function confermaCertificati(params, modificato)
 	params.operationid = operation.operationId;
 	params.operationhash = operation.operationHash;
 	
-	var url = globals.WS_CERTIFICATE + '/Certificate32/ConfermaCertificati';
+	var url = globals.WS_CERTIFICATE + '/Certificate32/ConfirmCertificate';
 	if(params.sync)
 		return globals.getWebServiceResponse(url + 'Sync', params);
 	

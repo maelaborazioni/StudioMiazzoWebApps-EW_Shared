@@ -784,7 +784,7 @@ function ma_ew_getDatiGiornaliera(idlavoratore, giorno)
  */
 function getFestivitaDipendente(idDitta, idDipendente, periodo)
 {
-	var url = WS_CALENDAR + '/Holiday32/FestivitaDipendente';
+	var url = WS_CALENDAR + '/Holiday32/WorkerHolidays';
 	var params = { 
 		userid                  : security.getUserName(), 
 		clientid                : security.getClientID(),
@@ -841,7 +841,7 @@ function inizializzaParametriAttivaMese(_idditta, _periodo, _gruppoinst, _gruppo
 		idditta					: _idditta,
 		periodo					: _periodo, 
 		idgruppoinstallazione	: _gruppoinst || -1,
-		codgruppogestione		: _gruppolav
+		codicegruppogestione	: _gruppolav
 	};
 	
 	_tipoConnessione ? 
@@ -890,7 +890,7 @@ function getElencoDipendentiSenzaRegoleAssociateWS(params)
 {
     /** @type {Array} */	
 	var dipArray = null;
-	var url = WS_CALENDAR + "/Calendar32/ControlloRegoleEntrata";
+	var url = WS_CALENDAR + "/Calendar32/WorkerRuleControl";
 	var _responseObj = getWebServiceResponse(url, params);
 	
 	if(_responseObj)
@@ -1052,7 +1052,7 @@ function getElencoDipendentiSenzaRegoleAssociateGruppoDitte(params)
  */
 function checkDipendentiDaAttivare(params)
 {
-	var url = globals.WS_CALENDAR + "/Calendar32/DipendentiDaAttivare";	
+	var url = globals.WS_CALENDAR + "/Calendar32/InactiveWorkers";	
 	/** @type {{ReturnValue: Object, StatusCode: Number, Message: String}} */
 	var _responseObj = getWebServiceResponse(url, params);
 	return _responseObj;
@@ -1068,22 +1068,26 @@ function checkDipendentiDaAttivare(params)
 function attivazioneMese(params)
 {	
 	setPeriodoAttivo(params.periodo);
-	var url = WS_CALENDAR + "/Calendar32/AttivazioneMese";
+	var url = WS_CALENDAR + "/Calendar32/Activate";
     if(params.sync)
     {
     	url += 'Sync';
     	return getWebServiceResponse(url,params);
     }
- // add new operation info for future updates
-	var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.AM);
-	if(operation == null || operation.operationId == null)
-	{
-		globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
-		return { StatusCode: globals.HTTPStatusCode.INTERNAL_ERROR , ReturnValue : false, Message : 'Errore durante la preparazione dell\'operazione lunga.'}; 
-	}
-	params.operationid = operation.operationId;
-	params.operationhash = operation.operationHash;
-	return addJsonWebServiceJob(url + 'Async',params);
+    url += 'Async';
+    if(params.operationid == null)
+    {
+	    // add new operation info for future updates
+		var operation = scopes.operation.create(params['idditta'],globals.getGruppoInstallazioneDitta(params['idditta']),params['periodo'],globals.OpType.AM);
+		if(operation == null || operation.operationId == null)
+		{
+			globals.ma_utl_showErrorDialog('Errore durante la preparazione dell\'operazione lunga. Riprovare o contattare il  servizio di Assistenza.');
+			return { StatusCode: globals.HTTPStatusCode.INTERNAL_ERROR , ReturnValue : false, Message : 'Errore durante la preparazione dell\'operazione lunga.'}; 
+		}
+		params.operationid = operation.operationId;
+		params.operationhash = operation.operationHash;
+    }
+    return addJsonWebServiceJob(url,params);
 }
 
 /**
@@ -1358,10 +1362,11 @@ function inizializzaParametriFtp(_idditta,_gruppoinst)
  * @param _idditta
  * @param _gruppoinst
  * @param _periodo
- *
+ * @param _sede
+ * 
  * @properties={typeid:24,uuid:"F6D9721D-4CE8-4416-A07D-23453B187090"}
  */
-function inizializzaParametriFtpGiornaliera(_idditta,_gruppoinst, _periodo)
+function inizializzaParametriFtpGiornaliera(_idditta,_gruppoinst, _periodo, _sede)
 {
 	return {
     	userid                  : security.getUserName(), 
@@ -1371,7 +1376,8 @@ function inizializzaParametriFtpGiornaliera(_idditta,_gruppoinst, _periodo)
 		idditta                 : _idditta,
 		periodo                 : _periodo,
         idgruppoinstallazione   : _gruppoinst,
-		codiceditta             : getCodDitta(_idditta)
+		codiceditta             : getCodDitta(_idditta),
+		sede                    : _sede
 	    };
 }
 
@@ -2350,7 +2356,7 @@ function inizializzaParametriEvento(_idditta, _periodo, _giornisel, _tipoGiornal
  */
 function salvaEvento(_evParams)
 {	
-	var url = WS_EVENT + "/Event32/SalvaEvento";
+	var url = WS_EVENT + "/Event32/Save";
 	var responseObj = getWebServiceResponse(url,_evParams);
 	if(responseObj && responseObj.StatusCode == HTTPStatusCode.OK)
 	   return new Boolean(responseObj.ReturnValue);
@@ -2373,7 +2379,7 @@ function salvaEvento(_evParams)
  */
 function getProprietaSelezionabili(idEvento,idLav,periodo,gg,tipoGiorn)
 {
-	var url = globals.WS_EVENT + "/Event32/FiltraProprieta";
+	var url = globals.WS_EVENT + "/Event32/FilterProperties";
 	var params = inizializzaParametriFiltroProprietaEvento(
 					tipoGiorn
 					,globals._tipoConnessione
@@ -2512,7 +2518,7 @@ function FiltraEventiSelezionabili(idLav,periodo,tipoGiorn)
 {	
 	_arrIdEvSelezionabili = [];
 	
-	var url = globals.WS_EVENT + "/Event32/FiltraEventi"
+	var url = globals.WS_EVENT + "/Event32/Filter"
 	var params = globals.inizializzaParametriFiltroEvento(tipoGiorn
 														  ,globals.TipoConnessione.CLIENTE
 													  	  ,[idLav]
@@ -2548,7 +2554,7 @@ function FiltraEventiSelezionabili(idLav,periodo,tipoGiorn)
  */
 function FiltraEventiSelezionabiliModulo(idLavoratore,idTabSW)
 {	
-	var url = globals.WS_EVENT + "/Event32/FiltraEventiModulo"
+	var url = globals.WS_EVENT + "/Event32/FilterByModule"
 	
 	var params = globals.inizializzaParametriFiltroEventiModulo(
 		         globals.getDitta(idLavoratore),
